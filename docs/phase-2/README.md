@@ -144,7 +144,11 @@ Observed corrections:
 - เติม Authentication UI states ตาม screen contract และเพิ่ม Reset Password/Profile
 - เพิ่ม Hero loading/error fallback และส่วนติดต่อที่ลิงก์ไปยังช่องทางทางการของมหาวิทยาลัย
 
-## Remaining Gaps
+## Remaining Gaps at Phase 1A Close
+
+รายการต่อไปนี้เป็นช่องว่าง ณ ตอนปิด Phase 1A และเก็บไว้เป็นหลักฐานการส่งมอบในขณะนั้น
+งาน Identity/Profile ที่ระบุด้านล่างได้รับการเชื่อมต่อใน Phase 1B แล้ว
+สถานะปัจจุบันให้ยึด [Canonical Roadmap](../ROADMAP.md) เป็นหลัก
 
 - Authentication/Profile ยังเป็น UI simulation ไม่เชื่อม FastAPI, session, CSRF หรือ database
 - ยังไม่มี dashboard route สำหรับผู้ใช้ที่เข้าสู่ระบบ

@@ -25,19 +25,20 @@
 
 ## สถานะ
 
-ชุดเอกสารออกแบบและ Phase 1A Frontend Foundation เสร็จแล้ว ปัจจุบัน Phase 1B
-มี FastAPI, PostgreSQL migration และ Identity/Isolation flow ที่ทำงานจริง ส่วน MQTT runtime
-และ Simulator ยังอยู่ใน milestone ถัดไป สถานะ implementation ติดตามใน `docs/ROADMAP.md`
+ชุดเอกสารออกแบบ, Phase 1A Frontend Foundation และ Phase 1B Identity and Isolation เสร็จแล้ว
+ระบบมี FastAPI, PostgreSQL migration และ Identity/Isolation flow ที่ทำงานจริง พร้อมเริ่ม
+Phase 1C: Farm and Device Registry ส่วน MQTT runtime และ Simulator อยู่ใน Phase 1D/1E
+สถานะ implementation ล่าสุดติดตามใน `docs/ROADMAP.md`
 
 ## ลำดับการดำเนินงาน
 
 เลข Phase ใช้ตาม `structure.md` และแตก milestone ภายใน Phase 1 เพื่อให้ติดตามงานได้จริง:
 
 1. Phase 1A: Frontend Foundation — เสร็จแล้ว
-2. Phase 1B: Account activation, Admin approval และ tenant isolation — กำลังดำเนินการ
-3. Phase 1C: Farm, Plot, Weather Station, Soil Sensor และ assignment history
-4. Phase 1D: MQTT ingestion, TimescaleDB, Simulator และ Farmer dashboard
-5. Phase 1E: Relay command, ACK, audit, Admin queue และ offline alert
+2. Phase 1B: Account activation, Admin approval และ tenant isolation — เสร็จแล้ว
+3. Phase 1C: Farm, Plot, Weather Station, Soil Sensor และ assignment history — งานถัดไป
+4. Phase 1D: MQTT ingestion, TimescaleDB, Simulator และ Farmer dashboard — ยังไม่เริ่ม
+5. Phase 1E: Relay command, ACK, audit, Admin queue และ offline alert — ยังไม่เริ่ม
 6. Phase 2: Field Operations — alerts, calibration, activity log, report/export และ device health
 7. Phase 3: Research and Automation — dataset governance, analytics และ safe automation
 
