@@ -46,6 +46,7 @@ from app.domains.identity.service import (
     serialize_user,
     verify_admin_totp,
 )
+from app.domains.registry.models import Farm, FarmMembership, FarmRole
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 users_router = APIRouter(prefix="/users", tags=["Users"])
@@ -78,10 +79,14 @@ async def register(payload: RegisterRequest, request: Request, db: AsyncSession 
     db.add_all([user, tenant])
     await db.flush()
     db.add(Membership(tenant_id=tenant.id, user_id=user.id, role=RoleCode.FARMER))
+    farm = Farm(tenant_id=tenant.id, name=payload.farm_name.strip(), timezone=user.timezone)
+    db.add(farm)
+    await db.flush()
+    db.add(FarmMembership(tenant_id=tenant.id, farm_id=farm.id, user_id=user.id, role=FarmRole.OWNER))
     verification = await issue_token(db, user, "VERIFY_EMAIL", settings.verification_minutes, settings)
     await queue_email(db, email, "verify_email", {"token": verification}, settings)
     await change_status(db, user, AccountStatus.PENDING_VERIFICATION, None, "registration")
-    await audit(db, request.state.request_id, "identity.registered", "user", user.id, tenant_id=tenant.id)
+    await audit(db, request.state.request_id, "identity.registered", "user", user.id, tenant_id=tenant.id, detail={"farm_id": str(farm.id)})
     await db.commit()
     return RegistrationResponse(status=user.status, message="Registration received", verification_token=verification if settings.expose_dev_tokens else None)
 

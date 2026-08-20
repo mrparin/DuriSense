@@ -610,7 +610,7 @@ Production inbound port policy:
 
 - **Phase 1A Frontend Foundation — เสร็จแล้ว:** scaffold, design tokens, Landing/About/Guide และ Authentication UI simulation
 - **Phase 1B Identity and Isolation — เสร็จแล้ว:** backend identity/session/activation, encrypted SMTP outbox, Admin approval UI, MFA lifecycle, RBAC และ tenant isolation ผ่านการทดสอบ
-- **Phase 1C Farm and Device Registry — ยังไม่เริ่ม:** Farm/Plot/Station/Sensor CRUD, assignment history และ decommission
+- **Phase 1C Farm and Device Registry — กำลังดำเนินการ:** Farm/Plot/Station/Sensor registry รุ่นแรก, assignment history, credential rotation และ decommission ทำงานแล้ว เหลือ membership management, calibration metadata และ flow แก้ไขให้ครบ
 - **Phase 1D Telemetry Vertical Slice — ยังไม่เริ่ม:** MQTT ingestion, TimescaleDB, Simulator และ Farmer dashboard
 - **Phase 1E Relay and Admin Vertical Slice — ยังไม่เริ่ม:** Relay ACK/reported state, audit และ offline alert โดยต่อยอด Admin workspace จาก Phase 1B
 

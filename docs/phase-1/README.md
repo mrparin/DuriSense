@@ -22,12 +22,13 @@
 6. [API และ Screen Contract](./06-api-and-screen-contract.md)
 7. [UI Direction ด้วย Gridgeist](./07-ui-direction.md)
 8. [Phase 1B Delivery](./08-phase-1b-delivery.md)
+9. [Phase 1C Progress](./09-phase-1c-progress.md)
 
 ## สถานะ
 
 ชุดเอกสารออกแบบ, Phase 1A Frontend Foundation และ Phase 1B Identity and Isolation เสร็จแล้ว
-ระบบมี FastAPI, PostgreSQL migration และ Identity/Isolation flow ที่ทำงานจริง พร้อมเริ่ม
-Phase 1C: Farm and Device Registry ส่วน MQTT runtime และ Simulator อยู่ใน Phase 1D/1E
+ระบบมี FastAPI, PostgreSQL migration และ Identity/Isolation flow ที่ทำงานจริง ขณะนี้ Phase 1C:
+Farm and Device Registry กำลังดำเนินการ ส่วน MQTT runtime และ Simulator อยู่ใน Phase 1D/1E
 สถานะ implementation ล่าสุดติดตามใน `docs/ROADMAP.md`
 
 ## ลำดับการดำเนินงาน
@@ -36,7 +37,7 @@ Phase 1C: Farm and Device Registry ส่วน MQTT runtime และ Simulator
 
 1. Phase 1A: Frontend Foundation — เสร็จแล้ว
 2. Phase 1B: Account activation, Admin approval และ tenant isolation — เสร็จแล้ว
-3. Phase 1C: Farm, Plot, Weather Station, Soil Sensor และ assignment history — งานถัดไป
+3. Phase 1C: Farm, Plot, Weather Station, Soil Sensor และ assignment history — กำลังดำเนินการ
 4. Phase 1D: MQTT ingestion, TimescaleDB, Simulator และ Farmer dashboard — ยังไม่เริ่ม
 5. Phase 1E: Relay command, ACK, audit, Admin queue และ offline alert — ยังไม่เริ่ม
 6. Phase 2: Field Operations — alerts, calibration, activity log, report/export และ device health

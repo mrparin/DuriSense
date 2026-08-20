@@ -15,7 +15,7 @@
 | Preparation: Architecture | เสร็จ | Requirement, ADR, architecture, data model, MQTT/API/screen contract และ UI direction |
 | Phase 1A: Frontend Foundation | เสร็จ | Scaffold, tokens, Landing/About/Guide, Authentication UI states, Reset Password และ Profile simulation |
 | Phase 1B: Identity and Isolation | เสร็จ | Identity, Admin approval UI, SMTP outbox, MFA lifecycle, RBAC และ tenant isolation ใช้งานและทดสอบแล้ว |
-| Phase 1C: Farm and Device Registry | ยังไม่เริ่ม | Farm, Plot, Weather Station, Soil Sensor, assignment history และ decommission |
+| Phase 1C: Farm and Device Registry | กำลังดำเนินการ | Farm/Plot และ Station/Sensor registry รุ่นแรกทำงานแล้ว เหลือ membership management, calibration metadata และ browser flow รอบสมบูรณ์ |
 | Phase 1D: Telemetry Vertical Slice | ยังไม่เริ่ม | Mosquitto, MQTT ingestion, validation, TimescaleDB, simulator และ Farmer dashboard |
 | Phase 1E: Relay and Admin Vertical Slice | ยังไม่เริ่ม | Relay command/ACK/state, audit และ offline alert โดยต่อยอด Admin workspace จาก Phase 1B |
 | Phase 2: Field Operations | ยังไม่เริ่ม | Alert rules, notification preference, calibration, data quality, activity/irrigation log, export/report และ device health |
@@ -56,10 +56,22 @@ Phase 1 จะถือว่าเสร็จเมื่อ vertical slice �
 
 ### Phase 1C: Farm and Device Registry
 
-- Farm/Plot CRUD และ membership
-- Weather Station/Soil Sensor registry
-- `SOIL_TH`/`SOIL_7_IN_1`, assignment/reassignment history และ calibration metadata
-- Device credential lifecycle และ decommission โดยรักษาประวัติ
+ส่งมอบแล้วในรุ่นแรก:
+
+- Farm และ Plot create/read/update/archive พร้อม farm membership scope และ cross-tenant 404
+- Weather Station/Soil Sensor create/read/update/list รองรับ `SOIL_TH`/`SOIL_7_IN_1`
+- Sensor assignment/reassignment แบบปิดช่วงเดิมและรักษาประวัติการติดตั้ง
+- Weather Station credential rotation ที่แสดง secret ครั้งเดียวและเก็บเฉพาะ hash
+- Device decommission ที่ revoke credential, ปิด assignment และรักษา audit/decommission history
+- Farmer workspace `/farms` และ `/devices` เชื่อม API จริง รองรับ loading, empty, error, success และ destructive confirmation
+- Alembic revision `20260820_07` ผ่าน PostgreSQL พร้อม backfill บัญชีเดิม และ automated tests รวม 9 รายการ
+
+งานที่เหลือก่อนปิด milestone:
+
+- Farm membership invite/role/revoke workflow และหน้าจอจัดการสมาชิก
+- Calibration record/metadata workflow
+- API/UI สำหรับแก้ไขและ archive resource ให้ครบทุก flow โดยไม่พึ่ง API โดยตรง
+- Browser regression รอบสุดท้ายหลังงานที่เหลือ พร้อม farm-level permission matrix เพิ่มเติม
 
 ### Phase 1D: Telemetry Vertical Slice
 

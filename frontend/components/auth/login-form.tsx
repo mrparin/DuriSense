@@ -62,7 +62,7 @@ export function LoginForm({ initialState = "default" }: { initialState?: LoginSt
           recovery_code: form.get("recovery_code") || null,
         }),
       });
-      router.replace(result.user.roles.includes("ADMIN") ? "/admin/users" : "/profile");
+      router.replace(result.user.roles.includes("ADMIN") ? "/admin/users" : "/farms");
       router.refresh();
     } catch (error) {
       if (!(error instanceof ApiError)) {
