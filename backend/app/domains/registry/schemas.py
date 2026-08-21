@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.domains.registry.models import DeviceKind, DeviceStatus, FarmRole, FarmStatus, SoilSensorType
 
@@ -37,6 +37,26 @@ class FarmResponse(ORMModel):
     subdistrict: str | None
     status: FarmStatus
     membership_role: FarmRole
+    created_at: datetime
+
+
+class FarmMembershipCreate(BaseModel):
+    email: EmailStr
+    role: FarmRole
+
+
+class FarmMembershipUpdate(BaseModel):
+    role: FarmRole
+
+
+class FarmMembershipResponse(BaseModel):
+    id: UUID
+    farm_id: UUID
+    user_id: UUID
+    email: EmailStr
+    full_name: str
+    role: FarmRole
+    active: bool
     created_at: datetime
 
 

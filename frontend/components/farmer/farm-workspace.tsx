@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2, ChevronRight, LandPlot, LoaderCircle, MapPin
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
+import { FarmMembershipPanel } from "@/components/farmer/farm-membership-panel";
 
 type Farm = {
   id: string;
@@ -27,11 +28,12 @@ type Plot = {
 };
 
 type ViewState = "loading" | "ready" | "unauthorized" | "error";
-type SessionContext = { tenants: Array<{ id: string; name: string }> };
+type SessionContext = { id: string; tenants: Array<{ id: string; name: string }> };
 
 export function FarmWorkspace() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [tenantId, setTenantId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [selectedFarmId, setSelectedFarmId] = useState("");
   const [plots, setPlots] = useState<Plot[]>([]);
   const [state, setState] = useState<ViewState>("loading");
@@ -47,6 +49,7 @@ export function FarmWorkspace() {
       const [items, session] = await Promise.all([apiFetch<Farm[]>("/farms"), apiFetch<SessionContext>("/auth/session")]);
       setFarms(items);
       setTenantId(session.tenants[0]?.id ?? "");
+      setCurrentUserId(session.id);
       setSelectedFarmId((current) => current && items.some((farm) => farm.id === current) ? current : items[0]?.id ?? "");
       setState("ready");
     } catch (reason) {
@@ -61,6 +64,7 @@ export function FarmWorkspace() {
         if (cancelled) return;
         setFarms(items);
         setTenantId(session.tenants[0]?.id ?? "");
+        setCurrentUserId(session.id);
         setSelectedFarmId(items[0]?.id ?? "");
         setState("ready");
       })
@@ -128,6 +132,7 @@ export function FarmWorkspace() {
   if (state === "error") return <WorkspaceState icon={AlertCircle} title="โหลดข้อมูลสวนไม่สำเร็จ" action={<button className="button button--secondary" onClick={loadFarms}><RefreshCw />ลองอีกครั้ง</button>} danger />;
 
   const selectedFarm = farms.find((farm) => farm.id === selectedFarmId);
+  const canManageFarm = selectedFarm?.membership_role === "OWNER" || selectedFarm?.membership_role === "MANAGER";
 
   return (
     <>
@@ -166,10 +171,10 @@ export function FarmWorkspace() {
           <section className="registry-surface" aria-labelledby="selected-farm-title">
             <div className="registry-surface__header">
               <div><p className="registry-kicker"><MapPinned />{selectedFarm?.membership_role === "OWNER" ? "เจ้าของสวน" : "สมาชิกสวน"}</p><h2 id="selected-farm-title">{selectedFarm?.name}</h2><p>{selectedFarm?.timezone} · {selectedFarm?.status === "ACTIVE" ? "กำลังใช้งาน" : "เก็บถาวร"}</p></div>
-              <button className="button button--secondary" type="button" onClick={() => setShowPlotForm((value) => !value)}><Plus />เพิ่มแปลง</button>
+              {canManageFarm && <button className="button button--secondary" type="button" onClick={() => setShowPlotForm((value) => !value)}><Plus />เพิ่มแปลง</button>}
             </div>
 
-            {showPlotForm && <form className="registry-form registry-form--nested" onSubmit={createPlot}>
+            {showPlotForm && canManageFarm && <form className="registry-form registry-form--nested" onSubmit={createPlot}>
               <div className="registry-form__grid">
                 <div className="form-field"><label htmlFor="plot-name">ชื่อแปลง</label><input id="plot-name" name="name" required /></div>
                 <div className="form-field"><label htmlFor="area-rai">พื้นที่ (ไร่)</label><input id="area-rai" name="area_rai" type="number" min="0" step="0.01" /></div>
@@ -182,6 +187,7 @@ export function FarmWorkspace() {
             {plotsLoading ? <div className="registry-empty"><LoaderCircle className="is-spinning" /><p>กำลังโหลดแปลง</p></div> : plots.length === 0 ? <div className="registry-empty"><Sprout /><h3>สวนนี้ยังไม่มีแปลง</h3><p>เพิ่มแปลงเพื่อกำหนดตำแหน่งติดตั้งอุปกรณ์</p></div> : <div className="plot-list" role="list">
               {plots.map((plot, index) => <article className="plot-row" key={plot.id} role="listitem"><span className="plot-row__index">{String(index + 1).padStart(2, "0")}</span><div><h3>{plot.name}</h3><p>{plot.crop_variety || "ยังไม่ระบุพันธุ์"}{plot.area_rai != null ? ` · ${plot.area_rai} ไร่` : ""}</p>{plot.notes && <small>{plot.notes}</small>}</div><span className="registry-status registry-status--active">ใช้งาน</span></article>)}
             </div>}
+            {selectedFarm && currentUserId && <FarmMembershipPanel key={selectedFarm.id} farmId={selectedFarm.id} actorRole={selectedFarm.membership_role} currentUserId={currentUserId} />}
           </section>
         </div>
       )}

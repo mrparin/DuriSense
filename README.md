@@ -8,7 +8,7 @@
 โครงการปิด **Phase 1B: Identity and Isolation** แล้ว และกำลังพัฒนา **Phase 1C: Farm and Device Registry**
 ระบบมี FastAPI, PostgreSQL migration, สมัคร/ยืนยัน/เข้าสู่ระบบ/กู้รหัสผ่าน, opaque session,
 CSRF, Admin approval workspace, TOTP MFA + recovery code, SMTP outbox, permission-backed RBAC และ tenant isolation
-พร้อม Farm/Plot registry, Weather Station/Soil Sensor, assignment history, credential rotation และ decommission รุ่นแรก
+พร้อม Farm/Plot registry, Weather Station/Soil Sensor, farm membership management, assignment history, credential rotation และ decommission รุ่นแรก
 
 ดูสถานะและลำดับงานที่ [Canonical Roadmap](./docs/ROADMAP.md)
 

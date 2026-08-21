@@ -2,7 +2,7 @@ from datetime import timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import AuthContext, csrf_protected, current_auth
@@ -10,7 +10,7 @@ from app.api.errors import APIError
 from app.core.config import Settings, get_settings
 from app.core.security import random_token, token_hash
 from app.db.session import get_db
-from app.domains.identity.models import Membership
+from app.domains.identity.models import AccountStatus, Membership, User
 from app.domains.identity.schemas import GenericResponse
 from app.domains.identity.service import audit, now_utc
 from app.domains.registry.models import (
@@ -36,6 +36,9 @@ from app.domains.registry.schemas import (
     DeviceResponse,
     DeviceUpdate,
     FarmCreate,
+    FarmMembershipCreate,
+    FarmMembershipResponse,
+    FarmMembershipUpdate,
     FarmResponse,
     FarmUpdate,
     PlotCreate,
@@ -47,6 +50,8 @@ from app.domains.registry.schemas import (
 
 router = APIRouter(tags=["Farm and Device Registry"])
 MANAGER_ROLES = {FarmRole.OWNER, FarmRole.MANAGER}
+DELEGATABLE_ROLES = {FarmRole.MANAGER, FarmRole.MEMBER, FarmRole.TECHNICIAN}
+MANAGER_DELEGATABLE_ROLES = {FarmRole.MEMBER, FarmRole.TECHNICIAN}
 
 
 def clean(value: str | None) -> str | None:
@@ -107,6 +112,40 @@ def farm_response(farm: Farm, membership: FarmMembership) -> FarmResponse:
     )
 
 
+def farm_membership_response(membership: FarmMembership, user: User) -> FarmMembershipResponse:
+    return FarmMembershipResponse(
+        id=membership.id,
+        farm_id=membership.farm_id,
+        user_id=membership.user_id,
+        email=user.email,
+        full_name=user.full_name,
+        role=membership.role,
+        active=membership.active,
+        created_at=membership.created_at,
+    )
+
+
+def ensure_membership_change_allowed(
+    actor: FarmMembership,
+    target: FarmMembership | None,
+    role: FarmRole | None,
+    actor_user_id: UUID,
+) -> None:
+    if target is not None and target.user_id == actor_user_id:
+        raise APIError(409, "MEMBERSHIP_SELF_CHANGE_FORBIDDEN", "You cannot change your own farm membership")
+    if target is not None and target.role == FarmRole.OWNER:
+        raise APIError(409, "FARM_OWNER_IMMUTABLE", "Farm ownership cannot be changed by membership management")
+    if role == FarmRole.OWNER:
+        raise APIError(422, "OWNER_TRANSFER_REQUIRED", "Use a dedicated ownership transfer workflow")
+    if role is not None and role not in DELEGATABLE_ROLES:
+        raise APIError(422, "FARM_ROLE_INVALID", "The requested farm role is not supported")
+    if actor.role == FarmRole.MANAGER:
+        if target is not None and target.role not in MANAGER_DELEGATABLE_ROLES:
+            raise APIError(403, "FARM_OWNER_REQUIRED", "Only a farm owner can manage this membership")
+        if role is not None and role not in MANAGER_DELEGATABLE_ROLES:
+            raise APIError(403, "FARM_OWNER_REQUIRED", "Only a farm owner can grant this role")
+
+
 def device_response(device: Device) -> DeviceResponse:
     station = device.weather_station if device.kind == DeviceKind.WEATHER_STATION else None
     sensor = device.soil_sensor if device.kind == DeviceKind.SOIL_SENSOR else None
@@ -156,6 +195,146 @@ async def create_farm(payload: FarmCreate, request: Request, auth: AuthContext =
 async def read_farm(farm_id: UUID, auth: AuthContext = Depends(current_auth), db: AsyncSession = Depends(get_db)):
     farm, membership = await farm_access(farm_id, auth.user.id, db)
     return farm_response(farm, membership)
+
+
+@router.get("/farms/{farm_id}/memberships", response_model=list[FarmMembershipResponse])
+async def list_farm_memberships(
+    farm_id: UUID,
+    include_inactive: bool = False,
+    auth: AuthContext = Depends(current_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    await farm_access(farm_id, auth.user.id, db)
+    query = (
+        select(FarmMembership, User)
+        .join(User, User.id == FarmMembership.user_id)
+        .where(FarmMembership.farm_id == farm_id)
+        .order_by(FarmMembership.active.desc(), User.full_name, User.email)
+    )
+    if not include_inactive:
+        query = query.where(FarmMembership.active.is_(True))
+    rows = (await db.execute(query)).all()
+    return [farm_membership_response(membership, user) for membership, user in rows]
+
+
+@router.post("/farms/{farm_id}/memberships", response_model=FarmMembershipResponse, status_code=201)
+async def add_farm_membership(
+    farm_id: UUID,
+    payload: FarmMembershipCreate,
+    request: Request,
+    auth: AuthContext = Depends(csrf_protected),
+    db: AsyncSession = Depends(get_db),
+):
+    farm, actor = await farm_access(farm_id, auth.user.id, db, manage=True)
+    ensure_membership_change_allowed(actor, None, payload.role, auth.user.id)
+    user = await db.scalar(
+        select(User)
+        .join(Membership, Membership.user_id == User.id)
+        .where(
+            func.lower(User.email) == payload.email.lower(),
+            User.status == AccountStatus.ACTIVE,
+            Membership.tenant_id == farm.tenant_id,
+            Membership.active.is_(True),
+        )
+    )
+    if user is None:
+        raise APIError(404, "ELIGIBLE_USER_NOT_FOUND", "No active organization member was found for this email")
+    existing = await db.scalar(
+        select(FarmMembership).where(FarmMembership.farm_id == farm.id, FarmMembership.user_id == user.id)
+    )
+    if existing and existing.active:
+        raise APIError(409, "FARM_MEMBERSHIP_EXISTS", "This user already has access to the farm")
+    membership = existing or FarmMembership(
+        tenant_id=farm.tenant_id,
+        farm_id=farm.id,
+        user_id=user.id,
+    )
+    ensure_membership_change_allowed(actor, membership if existing else None, payload.role, auth.user.id)
+    membership.role = payload.role
+    membership.active = True
+    db.add(membership)
+    await db.flush()
+    await audit(
+        db,
+        request.state.request_id,
+        "registry.farm_membership_added",
+        "farm_membership",
+        membership.id,
+        actor_id=auth.user.id,
+        tenant_id=farm.tenant_id,
+        detail={"farm_id": str(farm.id), "user_id": str(user.id), "role": payload.role.value},
+    )
+    await db.commit()
+    return farm_membership_response(membership, user)
+
+
+@router.patch("/farms/{farm_id}/memberships/{membership_id}", response_model=FarmMembershipResponse)
+async def update_farm_membership(
+    farm_id: UUID,
+    membership_id: UUID,
+    payload: FarmMembershipUpdate,
+    request: Request,
+    auth: AuthContext = Depends(csrf_protected),
+    db: AsyncSession = Depends(get_db),
+):
+    farm, actor = await farm_access(farm_id, auth.user.id, db, manage=True)
+    row = (await db.execute(
+        select(FarmMembership, User)
+        .join(User, User.id == FarmMembership.user_id)
+        .where(FarmMembership.id == membership_id, FarmMembership.farm_id == farm.id, FarmMembership.active.is_(True))
+    )).first()
+    if row is None:
+        raise APIError(404, "RESOURCE_NOT_FOUND", "Resource was not found")
+    membership, user = row
+    ensure_membership_change_allowed(actor, membership, payload.role, auth.user.id)
+    previous_role = membership.role
+    membership.role = payload.role
+    await audit(
+        db,
+        request.state.request_id,
+        "registry.farm_membership_role_changed",
+        "farm_membership",
+        membership.id,
+        actor_id=auth.user.id,
+        tenant_id=farm.tenant_id,
+        detail={"farm_id": str(farm.id), "user_id": str(user.id), "from_role": previous_role.value, "to_role": payload.role.value},
+    )
+    await db.commit()
+    return farm_membership_response(membership, user)
+
+
+@router.delete("/farms/{farm_id}/memberships/{membership_id}", response_model=GenericResponse)
+async def revoke_farm_membership(
+    farm_id: UUID,
+    membership_id: UUID,
+    request: Request,
+    auth: AuthContext = Depends(csrf_protected),
+    db: AsyncSession = Depends(get_db),
+):
+    farm, actor = await farm_access(farm_id, auth.user.id, db, manage=True)
+    membership = await db.scalar(
+        select(FarmMembership).where(
+            FarmMembership.id == membership_id,
+            FarmMembership.farm_id == farm.id,
+            FarmMembership.active.is_(True),
+        )
+    )
+    if membership is None:
+        raise APIError(404, "RESOURCE_NOT_FOUND", "Resource was not found")
+    ensure_membership_change_allowed(actor, membership, None, auth.user.id)
+    membership.active = False
+    await audit(
+        db,
+        request.state.request_id,
+        "registry.farm_membership_revoked",
+        "farm_membership",
+        membership.id,
+        actor_id=auth.user.id,
+        tenant_id=farm.tenant_id,
+        detail={"farm_id": str(farm.id), "user_id": str(membership.user_id), "role": membership.role.value},
+    )
+    await db.commit()
+    return GenericResponse(message="Farm membership revoked")
 
 
 @router.patch("/farms/{farm_id}", response_model=FarmResponse)

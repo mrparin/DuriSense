@@ -1,6 +1,6 @@
 # Phase 1C Progress: Farm and Device Registry
 
-ตรวจสถานะล่าสุด: 20 สิงหาคม 2026
+ตรวจสถานะล่าสุด: 21 สิงหาคม 2026
 
 เอกสารนี้เป็นบันทึกต่อเนื่องของ Phase 1C เพื่อให้กลับมาพัฒนาต่อได้โดยไม่ต้องอาศัยความจำจากบทสนทนา
 สถานะสรุประดับโครงการยังคงยึด [Canonical Roadmap](../ROADMAP.md) เป็นหลัก
@@ -22,6 +22,10 @@
 - Decommission เป็น soft lifecycle: เปลี่ยนสถานะอุปกรณ์, revoke credential, ปิด assignment และเพิ่ม audit/decommission record
 - Resource ข้าม farm/tenant คืน 404 เพื่อลด IDOR/resource enumeration
 - Mutation ทุก endpoint ใช้ session, CSRF และ Origin validation เดิมจาก Phase 1B
+- เพิ่ม Farm Membership API สำหรับ list, เพิ่มด้วยอีเมล, เปลี่ยนบทบาท และถอนสิทธิ์แบบ soft revoke
+- ผู้ที่จะถูกเพิ่มต้องเป็นบัญชี active และมี tenant membership ในองค์กรเดียวกัน; อีเมลข้ามองค์กรคืน 404
+- Permission matrix: OWNER กำหนด MANAGER/MEMBER/TECHNICIAN ได้, MANAGER จัดการได้เฉพาะ MEMBER/TECHNICIAN,
+  ห้ามแก้ membership ของตนเองหรือเปลี่ยน OWNER ผ่าน flow นี้ และสงวน ownership transfer ไว้เป็น workflow แยก
 
 ### Frontend
 
@@ -33,28 +37,32 @@
 - ใช้ข้อมูล API จริง ไม่มี farm/device metrics จำลอง
 - รองรับ loading, empty, error, success, disabled และ destructive confirmation states
 - ตรวจ viewport 1280x800 และ 360x800; mobile ไม่มี horizontal overflow และ control ที่ตรวจมีความสูงอย่างน้อย 44px
+- เพิ่มส่วนจัดการสมาชิกใน `/farms` ตามสวนที่เลือก พร้อม add-by-email, role selector, revoke confirmation และสถานะสิทธิ์ของผู้ใช้
+- ซ่อนปุ่มเพิ่มแปลงจาก MEMBER/TECHNICIAN ให้ตรงกับ backend permission
+- เพิ่ม `allowedDevOrigins` สำหรับ `127.0.0.1`/`localhost` เพื่อให้ React bundles ทำงานเมื่อเปิด dev server ผ่าน URL ที่เอกสารกำหนด
 
 ## การตรวจสอบล่าสุด
 
 - `npm.cmd run lint` — ผ่าน
 - `npm.cmd run typecheck` — ผ่าน
 - `npm.cmd run build` — ผ่าน รวม route `/farms` และ `/devices` ทั้งหมด 16 routes
-- Backend regression suite — ผ่าน 9 tests
-- Registry tests — ผ่าน 3 tests ครอบคลุม lifecycle, CSRF และ cross-tenant isolation
+- Backend regression suite — ผ่าน 10 tests
+- Registry tests — ผ่าน 4 tests ครอบคลุม lifecycle, CSRF, cross-tenant isolation และ Farm Membership permission matrix
 - PostgreSQL migration — `20260820_07 (head)` และพบตารางใหม่ครบ 9 ตาราง
 - API health — `{"status":"ok"}`
 - Browser flow — login, create plot, create station, create sensor, assignment และ one-time credential ทำงานจริง
 - แก้ browser finding ที่ form แสดง success และ error พร้อมกันหลัง submit โดยเก็บ form reference ก่อน `await`
+- Browser membership flow — login, render owner/colleague, role change และ success state ทำงานจริง; ตรวจ desktop และ viewport 360x800
+- แก้ browser finding ที่ Next.js บล็อก dev bundles บน `127.0.0.1` และเพิ่ม touch target ของ role/revoke control เป็น 44px
 
 ข้อมูลบัญชี/สวน/อุปกรณ์ QA ที่สร้างเพื่อ browser test ถูกลบออกจาก PostgreSQL หลังตรวจเสร็จแล้ว
 
 ## งานถัดไป
 
-1. เพิ่ม farm membership invite, list, role change และ revoke พร้อม permission matrix
-2. เพิ่ม calibration record และ metadata ที่อ้างอิง sensor/ผู้ปฏิบัติงาน/เวลา
-3. เพิ่ม UI edit/archive สำหรับ Farm, Plot และ Device ให้ครบกับ API
-4. เพิ่ม reassignment history view และ credential status โดยไม่เปิดเผย secret เดิม
-5. เพิ่ม browser regression สำหรับ error, validation และ destructive confirmation รอบสมบูรณ์
+1. เพิ่ม calibration record และ metadata ที่อ้างอิง sensor/ผู้ปฏิบัติงาน/เวลา
+2. เพิ่ม UI edit/archive สำหรับ Farm, Plot และ Device ให้ครบกับ API
+3. เพิ่ม reassignment history view และ credential status โดยไม่เปิดเผย secret เดิม
+4. เพิ่ม browser regression สำหรับ membership add/revoke, error, validation และ destructive confirmation รอบสมบูรณ์
 
 ## ข้อควรระวัง
 
