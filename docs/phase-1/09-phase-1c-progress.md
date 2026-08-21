@@ -40,6 +40,8 @@
 - เพิ่มส่วนจัดการสมาชิกใน `/farms` ตามสวนที่เลือก พร้อม add-by-email, role selector, revoke confirmation และสถานะสิทธิ์ของผู้ใช้
 - ซ่อนปุ่มเพิ่มแปลงจาก MEMBER/TECHNICIAN ให้ตรงกับ backend permission
 - เพิ่ม `allowedDevOrigins` สำหรับ `127.0.0.1`/`localhost` เพื่อให้ React bundles ทำงานเมื่อเปิด dev server ผ่าน URL ที่เอกสารกำหนด
+- หน้า `/devices` แสดงเฉพาะอุปกรณ์ `ACTIVE` ในรายการหลัก และย้าย `DECOMMISSIONED` ไปไว้ในส่วนประวัติที่เปิด–ปิดได้
+- เมื่อยกเลิก Weather Station ที่กำลังแสดง one-time credential ระบบล้าง secret นั้นออกจากหน้าจอทันที
 
 ## การตรวจสอบล่าสุด
 
@@ -68,5 +70,6 @@
 
 - ห้ามรับ `tenant_id` จาก client แล้วเชื่อถือโดยไม่ตรวจ Tenant/Farm membership
 - ห้ามแสดง credential เดิมซ้ำหรือบันทึก plaintext ลงฐานข้อมูล/log
+- Device credential ใช้ยืนยันตัวตน Weather Station/Gateway; server เป็นผู้ resolve device ไปยัง tenant/farm และ Phase 1D ต้องบังคับ MQTT ACL ตาม device identity นี้
 - ห้าม hard-delete device/assignment history ที่ใช้เป็น provenance
 - เมื่อเริ่ม Phase 1D ต้อง resolve telemetry ตาม assignment ที่ครอบคลุม `observed_at` ไม่ใช่ assignment ปัจจุบันอย่างเดียว

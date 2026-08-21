@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, CloudSun, Copy, Cpu, KeyRound, LoaderCircle, Plus, RefreshCw, Unplug } from "lucide-react";
+import { AlertCircle, CheckCircle2, CloudSun, Copy, Cpu, History, KeyRound, LoaderCircle, Plus, RefreshCw, Unplug } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
@@ -21,7 +21,7 @@ type Device = {
   model?: string | null;
 };
 
-type Credential = { secret: string; message: string };
+type Credential = { device_id: string; secret: string; message: string };
 type ViewState = "loading" | "ready" | "unauthorized" | "error";
 
 export function DeviceRegistry() {
@@ -32,6 +32,7 @@ export function DeviceRegistry() {
   const [state, setState] = useState<ViewState>("loading");
   const [showForm, setShowForm] = useState<"station" | "sensor" | null>(null);
   const [showAssignment, setShowAssignment] = useState(false);
+  const [showDecommissioned, setShowDecommissioned] = useState(false);
   const [credential, setCredential] = useState<Credential | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -145,6 +146,7 @@ export function DeviceRegistry() {
     setWorkingId(device.id);
     try {
       await apiFetch(`/devices/${device.id}`, { method: "DELETE", body: JSON.stringify({ reason }) });
+      setCredential((current) => current?.device_id === device.id ? null : current);
       setNotice(`ยกเลิกการใช้งาน “${device.display_name}” แล้ว โดยยังเก็บประวัติไว้`);
       await loadRegistry(farmId);
     } catch (reasonValue) { setError(reasonValue instanceof ApiError ? reasonValue.body.message : "ยกเลิกอุปกรณ์ไม่สำเร็จ"); }
@@ -157,6 +159,7 @@ export function DeviceRegistry() {
 
   const activeStations = devices.filter((item) => item.kind === "WEATHER_STATION" && item.status === "ACTIVE");
   const activeSensors = devices.filter((item) => item.kind === "SOIL_SENSOR" && item.status === "ACTIVE");
+  const decommissionedDevices = devices.filter((item) => item.status === "DECOMMISSIONED");
 
   return (
     <>
@@ -165,7 +168,12 @@ export function DeviceRegistry() {
         <div className="workspace-heading__actions"><button className="button button--secondary" onClick={() => setShowForm("sensor")}><Plus />เพิ่มเซนเซอร์</button><button className="button button--primary" onClick={() => setShowForm("station")}><Plus />เพิ่มสถานี</button></div>
       </div>
 
-      <div className="registry-toolbar"><label htmlFor="device-farm">บริบทสวน</label><select id="device-farm" value={farmId} onChange={(event) => setFarmId(event.target.value)}>{farms.map((farm) => <option value={farm.id} key={farm.id}>{farm.name}</option>)}</select><span>{activeStations.length} สถานี · {activeSensors.length} เซนเซอร์</span></div>
+      <div className="registry-toolbar">
+        <label htmlFor="device-farm">บริบทสวน</label>
+        <select id="device-farm" value={farmId} onChange={(event) => { setFarmId(event.target.value); setShowDecommissioned(false); setCredential(null); }}>{farms.map((farm) => <option value={farm.id} key={farm.id}>{farm.name}</option>)}</select>
+        <span>{activeStations.length} สถานี · {activeSensors.length} เซนเซอร์ที่ใช้งาน</span>
+        {decommissionedDevices.length > 0 && <button className="button button--secondary registry-history-toggle" type="button" aria-expanded={showDecommissioned} aria-controls="decommissioned-devices" onClick={() => setShowDecommissioned((value) => !value)}><History aria-hidden="true" />{showDecommissioned ? "ซ่อนประวัติ" : `แสดงประวัติ (${decommissionedDevices.length})`}</button>}
+      </div>
       {notice && <div className="form-status form-status--success" role="status"><CheckCircle2 /><div><strong>{notice}</strong></div></div>}
       {error && <div className="form-status form-status--danger" role="alert"><AlertCircle /><div><strong>{error}</strong></div></div>}
 
@@ -175,7 +183,7 @@ export function DeviceRegistry() {
 
       <section className="device-section" aria-labelledby="stations-title">
         <div className="device-section__heading"><div><p className="registry-label">Gateway layer</p><h2 id="stations-title">Weather Station</h2></div></div>
-        <DeviceList devices={devices.filter((item) => item.kind === "WEATHER_STATION")} plots={plots} workingId={workingId} onCredential={issueCredential} onDecommission={decommission} />
+        <DeviceList devices={activeStations} plots={plots} workingId={workingId} onCredential={issueCredential} onDecommission={decommission} emptyTitle="ยังไม่มีสถานีที่ใช้งาน" />
       </section>
 
       <section className="device-section" aria-labelledby="sensors-title">
@@ -188,7 +196,12 @@ export function DeviceRegistry() {
           <div className="form-field assignment-form__note"><label htmlFor="assign-note">หมายเหตุ</label><input id="assign-note" name="note" /></div>
           <button className="button button--primary" type="submit">บันทึก assignment</button>
         </form>}
-        <DeviceList devices={devices.filter((item) => item.kind === "SOIL_SENSOR")} plots={plots} workingId={workingId} onCredential={issueCredential} onDecommission={decommission} />
+        <DeviceList devices={activeSensors} plots={plots} workingId={workingId} onCredential={issueCredential} onDecommission={decommission} emptyTitle="ยังไม่มีเซนเซอร์ที่ใช้งาน" />
+      </section>
+
+      <section className="device-section device-section--history" id="decommissioned-devices" aria-labelledby="decommissioned-title" hidden={!showDecommissioned}>
+        <div className="device-section__heading"><div><p className="registry-label">Lifecycle history</p><h2 id="decommissioned-title">ประวัติอุปกรณ์ที่ยกเลิก</h2><p>เก็บไว้สำหรับตรวจสอบย้อนหลัง โดย credential และ assignment ปัจจุบันถูกปิดแล้ว</p></div></div>
+        <DeviceList devices={decommissionedDevices} plots={plots} workingId={workingId} onCredential={issueCredential} onDecommission={decommission} />
       </section>
     </>
   );
@@ -208,8 +221,8 @@ function DeviceForm({ kind, plots, onSubmit, onCancel }: { kind: "station" | "se
   </form>;
 }
 
-function DeviceList({ devices, plots, workingId, onCredential, onDecommission }: { devices: Device[]; plots: Plot[]; workingId: string | null; onCredential: (device: Device) => void; onDecommission: (device: Device) => void }) {
-  if (devices.length === 0) return <div className="registry-empty"><Cpu /><h3>ยังไม่มีอุปกรณ์ประเภทนี้</h3><p>รายการที่ลงทะเบียนจะปรากฏพร้อมรหัสและสถานะการใช้งาน</p></div>;
+function DeviceList({ devices, plots, workingId, onCredential, onDecommission, emptyTitle = "ยังไม่มีอุปกรณ์ประเภทนี้" }: { devices: Device[]; plots: Plot[]; workingId: string | null; onCredential: (device: Device) => void; onDecommission: (device: Device) => void; emptyTitle?: string }) {
+  if (devices.length === 0) return <div className="registry-empty"><Cpu /><h3>{emptyTitle}</h3><p>รายการที่ลงทะเบียนจะปรากฏพร้อมรหัสและสถานะการใช้งาน</p></div>;
   return <div className="device-table" role="list">{devices.map((device) => {
     const Icon = device.kind === "WEATHER_STATION" ? CloudSun : Cpu;
     const plotName = plots.find((plot) => plot.id === device.plot_id)?.name;
