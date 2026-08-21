@@ -42,6 +42,7 @@
 - เพิ่ม `allowedDevOrigins` สำหรับ `127.0.0.1`/`localhost` เพื่อให้ React bundles ทำงานเมื่อเปิด dev server ผ่าน URL ที่เอกสารกำหนด
 - หน้า `/devices` แสดงเฉพาะอุปกรณ์ `ACTIVE` ในรายการหลัก และย้าย `DECOMMISSIONED` ไปไว้ในส่วนประวัติที่เปิด–ปิดได้
 - เมื่อยกเลิก Weather Station ที่กำลังแสดง one-time credential ระบบล้าง secret นั้นออกจากหน้าจอทันที
+- หน้า public ตรวจ `/auth/session` เพื่อแสดงทางเข้าพื้นที่ทำงานแทนปุ่มเข้าสู่ระบบเมื่อ session ยังอยู่ และหน้า `/login` redirect ผู้ใช้ที่ยืนยันตัวตนแล้วโดยอัตโนมัติ
 
 ## การตรวจสอบล่าสุด
 

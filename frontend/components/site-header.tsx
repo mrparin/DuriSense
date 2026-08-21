@@ -1,9 +1,11 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { LoaderCircle, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import { SessionUser, workspacePath } from "@/lib/session";
 import { BrandLogo } from "./brand-logo";
 
 const navigation = [
@@ -16,7 +18,35 @@ const navigation = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState<SessionUser | null | undefined>(undefined);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+    apiFetch<SessionUser>("/auth/session")
+      .then((user) => { if (active) setSession(user); })
+      .catch(() => { if (active) setSession(null); });
+    return () => { active = false; };
+  }, []);
+
+  async function logout() {
+    setLogoutError("");
+    setLoggingOut(true);
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+      setSession(null);
+      setOpen(false);
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setLogoutError("ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <header className="site-header">
@@ -56,12 +86,29 @@ export function SiteHeader() {
             })}
           </div>
           <div className="site-navigation__actions">
-            <Link className="button button--ghost-light" href="/login" onClick={() => setOpen(false)}>
-              เข้าสู่ระบบ
-            </Link>
-            <Link className="button button--accent" href="/register" onClick={() => setOpen(false)}>
-              สมัครสมาชิก
-            </Link>
+            {session === undefined ? (
+              <span className="site-session-status" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" />กำลังตรวจสอบบัญชี</span>
+            ) : session ? (
+              <>
+                {logoutError && <span className="site-session-error" role="alert">{logoutError}</span>}
+                <Link className="button button--accent" href={workspacePath(session)} onClick={() => setOpen(false)}>
+                  {session.roles.includes("ADMIN") ? "พื้นที่ผู้ดูแล" : "พื้นที่จัดการสวน"}
+                </Link>
+                <button className="button button--ghost-light" type="button" onClick={logout} disabled={loggingOut}>
+                  {loggingOut ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <LogOut aria-hidden="true" />}
+                  ออกจากระบบ
+                </button>
+              </>
+            ) : (
+              <>
+                <Link className="button button--ghost-light" href="/login" onClick={() => setOpen(false)}>
+                  เข้าสู่ระบบ
+                </Link>
+                <Link className="button button--accent" href="/register" onClick={() => setOpen(false)}>
+                  สมัครสมาชิก
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </div>

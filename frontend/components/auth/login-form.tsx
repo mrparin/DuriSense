@@ -2,9 +2,10 @@
 
 import { AlertCircle, ArrowRight, Ban, Clock3, KeyRound, LoaderCircle, ShieldX } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, apiFetch } from "@/lib/api";
+import { SessionUser, workspacePath } from "@/lib/session";
 import { PasswordField } from "./password-field";
 
 type LoginState = "default" | "invalid" | "pending" | "suspended" | "rate-limited" | "mfa" | "submitting";
@@ -46,14 +47,27 @@ export function LoginForm({ initialState = "default" }: { initialState?: LoginSt
   const [status, setStatus] = useState<LoginState>(initialState);
   const [showOtp, setShowOtp] = useState(false);
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+    apiFetch<SessionUser>("/auth/session")
+      .then((user) => {
+        if (!active) return;
+        router.replace(workspacePath(user));
+        router.refresh();
+      })
+      .catch(() => { if (active) setCheckingSession(false); });
+    return () => { active = false; };
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setStatus("submitting");
     try {
-      const result = await apiFetch<{ user: { roles: string[] } }>("/auth/login", {
+      const result = await apiFetch<{ user: SessionUser }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({
           email: form.get("email"),
@@ -62,7 +76,7 @@ export function LoginForm({ initialState = "default" }: { initialState?: LoginSt
           recovery_code: form.get("recovery_code") || null,
         }),
       });
-      router.replace(result.user.roles.includes("ADMIN") ? "/admin/users" : "/farms");
+      router.replace(workspacePath(result.user));
       router.refresh();
     } catch (error) {
       if (!(error instanceof ApiError)) {
@@ -86,6 +100,8 @@ export function LoginForm({ initialState = "default" }: { initialState?: LoginSt
 
   const statusDetail = status !== "default" && status !== "submitting" ? loginStates[status] : null;
   const StatusIcon = statusDetail?.icon;
+
+  if (checkingSession) return <div className="auth-success auth-success--info" role="status"><LoaderCircle className="is-spinning" aria-hidden="true" /><h2>กำลังตรวจสอบการเข้าสู่ระบบ</h2><p>หาก session ยังใช้งานได้ ระบบจะพากลับไปยังพื้นที่ทำงานโดยอัตโนมัติ</p></div>;
 
   return (
     <>
