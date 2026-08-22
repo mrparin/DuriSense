@@ -216,3 +216,104 @@ async def test_farm_membership_permission_matrix_and_revocation(client):
     async with SessionLocal() as db:
         stored = await db.scalar(select(FarmMembership).where(FarmMembership.id == UUID(added_technician.json()["id"])))
         assert stored.active is False
+
+
+async def test_soil_sensor_calibration_workflow(client):
+    await register_and_activate(client)
+    authenticated = await login(client)
+    csrf = authenticated.json()["csrf_token"]
+    headers = mutation_headers(csrf)
+
+    farms = (await client.get("/api/v1/farms")).json()
+    farm = farms[0]
+
+    sensor = await client.post("/api/v1/soil-sensors", json={
+        "farm_id": farm["id"], "device_code": "SOIL-CAL-01",
+        "display_name": "Calibrated Sensor", "sensor_type": "SOIL_7_IN_1",
+    }, headers=headers)
+    assert sensor.status_code == 201
+    sensor_id = sensor.json()["id"]
+
+    # Record calibration
+    cal = await client.post(
+        f"/api/v1/soil-sensors/{sensor_id}/calibrations",
+        json={
+            "formula_type": "LINEAR",
+            "offset_value": 0.25,
+            "scale_factor": 1.05,
+            "temperature_compensation": True,
+            "notes": "Calibrated in field with pH 7.0 buffer",
+        },
+        headers=headers,
+    )
+    assert cal.status_code == 201
+    assert cal.json()["sensor_id"] == sensor_id
+    assert cal.json()["offset_value"] == 0.25
+    assert cal.json()["scale_factor"] == 1.05
+    assert cal.json()["temperature_compensation"] is True
+
+    # List calibrations
+    cal_list = await client.get(f"/api/v1/soil-sensors/{sensor_id}/calibrations")
+    assert cal_list.status_code == 200
+    assert len(cal_list.json()) == 1
+    assert cal_list.json()[0]["id"] == cal.json()["id"]
+
+
+async def test_farm_plot_device_edit_and_archive_workflow(client):
+    await register_and_activate(client)
+    authenticated = await login(client)
+    csrf = authenticated.json()["csrf_token"]
+    headers = mutation_headers(csrf)
+
+    farms = (await client.get("/api/v1/farms")).json()
+    farm = farms[0]
+
+    # Edit farm
+    farm_updated = await client.patch(
+        f"/api/v1/farms/{farm['id']}",
+        json={"name": "Updated Orchard Name", "province": "Rayong", "district": "Klaeng"},
+        headers=headers,
+    )
+    assert farm_updated.status_code == 200
+    assert farm_updated.json()["name"] == "Updated Orchard Name"
+    assert farm_updated.json()["province"] == "Rayong"
+
+    # Create & edit & archive plot
+    plot = await client.post(
+        f"/api/v1/farms/{farm['id']}/plots",
+        json={"name": "Plot 1", "area_rai": 5.0, "crop_variety": "Kanyao"},
+        headers=headers,
+    )
+    assert plot.status_code == 201
+    plot_id = plot.json()["id"]
+
+    plot_updated = await client.patch(
+        f"/api/v1/plots/{plot_id}",
+        json={"name": "Plot 1 Renamed", "area_rai": 6.5, "crop_variety": "Monthong"},
+        headers=headers,
+    )
+    assert plot_updated.status_code == 200
+    assert plot_updated.json()["name"] == "Plot 1 Renamed"
+    assert plot_updated.json()["area_rai"] == 6.5
+
+    plot_archived = await client.delete(f"/api/v1/plots/{plot_id}", headers=headers)
+    assert plot_archived.status_code == 200
+    active_plots = (await client.get(f"/api/v1/farms/{farm['id']}/plots")).json()
+    assert len(active_plots) == 0
+
+    # Create & edit device
+    station = await client.post("/api/v1/weather-stations", json={
+        "farm_id": farm["id"], "device_code": "WS-EDIT-01", "display_name": "Station Before Edit",
+    }, headers=headers)
+    assert station.status_code == 201
+    device_id = station.json()["id"]
+
+    device_updated = await client.patch(
+        f"/api/v1/devices/{device_id}",
+        json={"display_name": "Station After Edit", "firmware_version": "2.1.0"},
+        headers=headers,
+    )
+    assert device_updated.status_code == 200
+    assert device_updated.json()["display_name"] == "Station After Edit"
+    assert device_updated.json()["firmware_version"] == "2.1.0"
+

@@ -1,12 +1,13 @@
 "use client";
 
-import { Cpu, LandPlot, LogOut, UserRound } from "lucide-react";
+import { Cpu, LandPlot, LineChart, LogOut, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 
 const links = [
+  { href: "/telemetry", label: "ข้อมูลตรวจวัด", icon: LineChart },
   { href: "/farms", label: "สวนและแปลง", icon: LandPlot },
   { href: "/devices", label: "อุปกรณ์", icon: Cpu },
   { href: "/profile", label: "โปรไฟล์", icon: UserRound },

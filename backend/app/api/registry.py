@@ -14,6 +14,7 @@ from app.domains.identity.models import AccountStatus, Membership, User
 from app.domains.identity.schemas import GenericResponse
 from app.domains.identity.service import audit, now_utc
 from app.domains.registry.models import (
+    CalibrationRecord,
     DecommissionRecord,
     Device,
     DeviceCredential,
@@ -31,6 +32,8 @@ from app.domains.registry.models import (
 from app.domains.registry.schemas import (
     AssignmentCreate,
     AssignmentResponse,
+    CalibrationCreate,
+    CalibrationResponse,
     CredentialResponse,
     DecommissionRequest,
     DeviceResponse,
@@ -561,3 +564,61 @@ async def decommission_device(device_id: UUID, payload: DecommissionRequest, req
     await audit(db, request.state.request_id, "registry.device_decommissioned", "device", device.id, actor_id=auth.user.id, tenant_id=farm.tenant_id, detail={"reason": payload.reason.strip()})
     await db.commit()
     return GenericResponse(message="Device decommissioned")
+
+
+@router.post("/soil-sensors/{sensor_id}/calibrations", response_model=CalibrationResponse, status_code=201)
+async def create_calibration(
+    sensor_id: UUID,
+    payload: CalibrationCreate,
+    request: Request,
+    auth: AuthContext = Depends(csrf_protected),
+    db: AsyncSession = Depends(get_db),
+):
+    device, farm = await device_access(sensor_id, auth.user.id, db, manage=True)
+    if device.kind != DeviceKind.SOIL_SENSOR or device.status != DeviceStatus.ACTIVE:
+        raise APIError(422, "CALIBRATION_INVALID", "Calibration can only be recorded for an active soil sensor")
+    cal = CalibrationRecord(
+        tenant_id=farm.tenant_id,
+        farm_id=farm.id,
+        sensor_id=device.id,
+        operator_id=auth.user.id,
+        calibrated_at=as_utc(payload.calibrated_at),
+        formula_type=clean(payload.formula_type) or "LINEAR",
+        offset_value=payload.offset_value,
+        scale_factor=payload.scale_factor,
+        temperature_compensation=payload.temperature_compensation,
+        notes=clean(payload.notes),
+    )
+    db.add(cal)
+    await db.flush()
+    await audit(
+        db,
+        request.state.request_id,
+        "registry.sensor_calibrated",
+        "calibration_record",
+        cal.id,
+        actor_id=auth.user.id,
+        tenant_id=farm.tenant_id,
+        detail={"sensor_id": str(sensor_id), "formula_type": cal.formula_type, "offset": payload.offset_value, "scale": payload.scale_factor},
+    )
+    await db.commit()
+    return cal
+
+
+@router.get("/soil-sensors/{sensor_id}/calibrations", response_model=list[CalibrationResponse])
+async def list_calibrations(
+    sensor_id: UUID,
+    auth: AuthContext = Depends(current_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    device, _ = await device_access(sensor_id, auth.user.id, db)
+    if device.kind != DeviceKind.SOIL_SENSOR:
+        raise APIError(422, "SENSOR_REQUIRED", "A soil sensor is required")
+    return (
+        await db.scalars(
+            select(CalibrationRecord)
+            .where(CalibrationRecord.sensor_id == device.id)
+            .order_by(CalibrationRecord.calibrated_at.desc())
+        )
+    ).all()
+

@@ -11,6 +11,7 @@ import {
   LockKeyhole,
   RadioTower,
   ShieldCheck,
+  Sliders,
   Sprout,
   ToggleLeft,
   UserRoundCheck,
@@ -21,7 +22,7 @@ import { PublicShell } from "@/components/public-shell";
 
 export const metadata: Metadata = {
   title: "คู่มือการใช้งาน",
-  description: "คู่มือเริ่มต้นใช้งาน DuriSense ตั้งแต่บัญชีผู้ใช้ การตั้งค่าสวน ไปจนถึงอุปกรณ์และรีเลย์",
+  description: "คู่มือเริ่มต้นใช้งาน DuriSense ตั้งแต่บัญชีผู้ใช้ การตั้งค่าสวน การสอบเทียบเซนเซอร์ ไปจนถึงอุปกรณ์และรีเลย์",
 };
 
 const guideNavigation = [
@@ -29,6 +30,7 @@ const guideNavigation = [
   { href: "#account", label: "บัญชีและการเข้าสู่ระบบ" },
   { href: "#farm", label: "สร้างสวนและแปลง" },
   { href: "#devices", label: "เพิ่มอุปกรณ์" },
+  { href: "#calibration", label: "การสอบเทียบเซนเซอร์ (Calibration)" },
   { href: "#connection", label: "Simulator และฮาร์ดแวร์" },
   { href: "#monitoring", label: "ติดตามข้อมูล" },
   { href: "#relay", label: "ควบคุมรีเลย์" },
@@ -52,7 +54,7 @@ export default function GuidePage() {
             <p className="eyebrow eyebrow--light">คู่มือการใช้งานระบบ</p>
             <h1 id="guide-page-title">เริ่มใช้งาน DuriSense อย่างเป็นขั้นตอน</h1>
             <p className="guide-hero__lead">
-              ตั้งแต่การเปิดบัญชี จัดโครงสร้างสวน เชื่อมสถานีและเซนเซอร์
+              ตั้งแต่การเปิดบัญชี จัดโครงสร้างสวน การสอบเทียบเซนเซอร์ดิน เชื่อมสถานี
               ไปจนถึงการอ่านสถานะข้อมูลและควบคุมรีเลย์อย่างตรวจสอบได้
             </p>
             <div className="guide-hero__actions">
@@ -67,7 +69,7 @@ export default function GuidePage() {
           </div>
 
           <div className="guide-hero__summary" aria-label="ขอบเขตของคู่มือ">
-            <p><span>กลุ่มผู้ใช้งาน</span><strong>Farmer และผู้ติดตั้งอุปกรณ์</strong></p>
+            <p><span>กลุ่มผู้ใช้งาน</span><strong>Farmer, ช่างเทคนิค และนักวิจัย</strong></p>
             <p><span>แหล่งข้อมูลระยะแรก</span><strong>Simulator พร้อมทางเชื่อมฮาร์ดแวร์จริง</strong></p>
             <p><span>ความเป็นส่วนตัว</span><strong>ข้อมูลสวนแสดงหลังเข้าสู่ระบบเท่านั้น</strong></p>
           </div>
@@ -167,9 +169,52 @@ export default function GuidePage() {
               </div>
             </section>
 
-            <section className="guide-chapter" id="connection">
+            <section className="guide-chapter" id="calibration">
               <div className="guide-chapter__heading">
                 <span className="guide-chapter__index">05</span>
+                <div>
+                  <p className="eyebrow">การสอบเทียบ</p>
+                  <h2>วิธีการและสูตรสอบเทียบเซนเซอร์ดิน (Sensor Calibration)</h2>
+                </div>
+              </div>
+              <p className="guide-chapter__lead">
+                ระบบรองรับการชดเชยค่าความคลาดเคลื่อนของเซนเซอร์บน Cloud (Cloud-Side Calibration)
+                โดยที่ฮาร์ดแวร์ส่งค่าดิบขึ้นมา แล้วระบบจะคำนวณปรับค่าที่ถูกต้องตามสูตรที่กำหนด ช่วยให้ไม่ต้องแก้ไข Firmware ทุกครั้งที่เปลี่ยนรอบสอบเทียบ
+              </p>
+
+              <div className="connection-paths" style={{ marginBottom: "var(--space-6)" }}>
+                <article>
+                  <span style={{ color: "var(--brand-700)", fontWeight: 800 }}>วิธีที่ 1 (นิยมมากที่สุด)</span>
+                  <h3>การสอบเทียบแบบ 1 จุด (1-Point / Offset Only)</h3>
+                  <p>เหมาะสำหรับการตรวจวัดกับน้ำยามาตรฐาน 1 ค่า (เช่น น้ำยา pH 7.00 หรือ EC 1413 µS/cm) เพื่อปรับแก้ค่าเลื่อน (Zero Shift):</p>
+                  <ul style={{ paddingLeft: "var(--space-4)", margin: "var(--space-2) 0", fontSize: 14, color: "var(--ink-700)" }}>
+                    <li><strong>สูตร:</strong> <code>y = x + b</code> (หรือ Linear โดยให้ Scale a = 1.0)</li>
+                    <li><strong>การคำนวณ Offset (b):</strong> <code>b = ค่าน้ำยาจริง - ค่าที่เซนเซอร์อ่านได้</code></li>
+                    <li><strong>ตัวอย่าง:</strong> น้ำยา pH 7.00 แต่อ่านได้ 6.80 &rarr; ตั้งค่า <code>Offset = +0.20</code></li>
+                  </ul>
+                </article>
+
+                <article>
+                  <span style={{ color: "var(--brand-700)", fontWeight: 800 }}>วิธีที่ 2 (ความแม่นยำสูงสุด)</span>
+                  <h3>การสอบเทียบแบบ 2 จุด (2-Point / Linear y = ax + b)</h3>
+                  <p>เหมาะสำหรับการสอบเทียบโพรบวัด pH หรือ EC ตลอดช่วงการวัด เช่น ทดสอบกับน้ำยามาตรฐาน 2 จุด (pH 4.01 และ pH 7.00):</p>
+                  <ul style={{ paddingLeft: "var(--space-4)", margin: "var(--space-2) 0", fontSize: 14, color: "var(--ink-700)" }}>
+                    <li><strong>Scale factor (a):</strong> <code>(ค่าน้ำยา2 - ค่าน้ำยา1) / (ค่าอ่าน2 - ค่าอ่าน1)</code></li>
+                    <li><strong>Offset value (b):</strong> <code>ค่าน้ำยา1 - (a × ค่าอ่าน1)</code></li>
+                    <li><strong>การชดเชยอุณหภูมิ:</strong> เปิดใช้งานหากเซนเซอร์มีหัววัดอุณหภูมิในตัว เพื่อปรับเทียบที่ 25°C</li>
+                  </ul>
+                </article>
+              </div>
+
+              <div className="guide-callout">
+                <Sliders aria-hidden="true" />
+                <p><strong>บันทึกประวัติทุกครั้ง</strong><span>ระบุ Lot หรือวันที่หมดอายุของน้ำยามาตรฐานในช่องหมายเหตุ เพื่อใช้เป็นหลักฐานงานวิจัยและความแม่นยำย้อนหลัง</span></p>
+              </div>
+            </section>
+
+            <section className="guide-chapter" id="connection">
+              <div className="guide-chapter__heading">
+                <span className="guide-chapter__index">06</span>
                 <div>
                   <p className="eyebrow">แหล่งข้อมูล</p>
                   <h2>เลือก Simulator หรือเชื่อมฮาร์ดแวร์จริง</h2>
@@ -196,7 +241,7 @@ export default function GuidePage() {
 
             <section className="guide-chapter" id="monitoring">
               <div className="guide-chapter__heading">
-                <span className="guide-chapter__index">06</span>
+                <span className="guide-chapter__index">07</span>
                 <div>
                   <p className="eyebrow">ติดตามข้อมูล</p>
                   <h2>อ่านค่าพร้อมเวลา คุณภาพ และสถานะอุปกรณ์</h2>
@@ -217,7 +262,7 @@ export default function GuidePage() {
 
             <section className="guide-chapter" id="relay">
               <div className="guide-chapter__heading">
-                <span className="guide-chapter__index">07</span>
+                <span className="guide-chapter__index">08</span>
                 <div>
                   <p className="eyebrow">ควบคุมอุปกรณ์</p>
                   <h2>สั่งรีเลย์โดยรอผลตอบรับจากอุปกรณ์</h2>
@@ -239,7 +284,7 @@ export default function GuidePage() {
 
             <section className="guide-chapter" id="troubleshooting">
               <div className="guide-chapter__heading">
-                <span className="guide-chapter__index">08</span>
+                <span className="guide-chapter__index">09</span>
                 <div>
                   <p className="eyebrow">แก้ปัญหาเบื้องต้น</p>
                   <h2>ตรวจจากบัญชี ไปจนถึงอุปกรณ์ภาคสนาม</h2>

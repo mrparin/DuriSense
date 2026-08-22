@@ -24,6 +24,17 @@ services:
       retries: 10
     security_opt: ["no-new-privileges:true"]
 
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ./infrastructure/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+    ports:
+      - "127.0.0.1:1883:1883"
+      - "127.0.0.1:8883:8883"
+    networks: [app_net, iot_net]
+    security_opt: ["no-new-privileges:true"]
+
   api:
     build: ./backend
     environment:
@@ -44,9 +55,11 @@ services:
       DURISENSE_SMTP_PASSWORD: ${DURISENSE_SMTP_PASSWORD:-}
       DURISENSE_SMTP_FROM_EMAIL: ${DURISENSE_SMTP_FROM_EMAIL:-noreply@durisense.local}
       DURISENSE_SMTP_STARTTLS: ${DURISENSE_SMTP_STARTTLS:-false}
+    volumes:
+      - ./backend:/app
     ports:
       - "127.0.0.1:8000:8000"
-    networks: [app_net, data_net]
+    networks: [app_net, data_net, iot_net]
     depends_on:
       db:
         condition: service_healthy
@@ -59,6 +72,49 @@ services:
       retries: 10
     security_opt: ["no-new-privileges:true"]
 
+  mqtt-ingestor:
+    build:
+      context: .
+      dockerfile: services/mqtt-ingestor/Dockerfile
+    environment:
+      DURISENSE_DATABASE_URL: postgresql+asyncpg://durisense:change-me@db:5432/durisense
+      DURISENSE_MQTT_HOST: mosquitto
+      DURISENSE_MQTT_PORT: 1883
+    volumes:
+      - ./backend/app:/app/app
+      - ./packages:/app/packages
+      - ./services/mqtt-ingestor/main.py:/app/main.py
+    networks: [data_net, iot_net]
+    depends_on:
+      db:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+  simulator:
+    build:
+      context: .
+      dockerfile: services/simulator/Dockerfile
+    environment:
+      DURISENSE_DATABASE_URL: postgresql+asyncpg://durisense:change-me@db:5432/durisense
+      DURISENSE_MQTT_HOST: mosquitto
+      DURISENSE_MQTT_PORT: 1883
+      DURISENSE_SIMULATOR_INTERVAL: 10
+    volumes:
+      - ./backend/app:/app/app
+      - ./packages:/app/packages
+      - ./services/simulator/main.py:/app/main.py
+    networks: [data_net, iot_net]
+    depends_on:
+      db:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
   api-test:
     profiles: ["test"]
     build:
@@ -68,18 +124,22 @@ services:
     command: ["pytest", "-q"]
     environment:
       DURISENSE_ENVIRONMENT: test
-      DURISENSE_DATABASE_URL: sqlite+aiosqlite:///./test.db
+      DURISENSE_DATABASE_URL: sqlite+aiosqlite:////tmp/test.db
       DURISENSE_SECRET_KEY: test-secret-key-at-least-32-characters
       DURISENSE_COOKIE_SECURE: "false"
       DURISENSE_EXPOSE_DEV_TOKENS: "true"
+      PYTHONPATH: "/app:/app/packages"
     volumes:
       - ./backend:/app
+      - ./packages:/app/packages
     networks: [app_net]
 
 networks:
   app_net:
   data_net:
     internal: true
+  iot_net:
 
 volumes:
   durisense_db:
+  mosquitto_data:

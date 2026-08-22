@@ -1,7 +1,7 @@
 import os
 
 os.environ.setdefault("DURISENSE_ENVIRONMENT", "test")
-os.environ.setdefault("DURISENSE_DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+os.environ.setdefault("DURISENSE_DATABASE_URL", "sqlite+aiosqlite:////tmp/test.db")
 os.environ.setdefault("DURISENSE_SECRET_KEY", "test-secret-key-at-least-32-characters")
 os.environ.setdefault("DURISENSE_COOKIE_SECURE", "false")
 os.environ.setdefault("DURISENSE_EXPOSE_DEV_TOKENS", "true")

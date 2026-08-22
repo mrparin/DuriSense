@@ -8,17 +8,17 @@
 
 ## สถานะปัจจุบัน
 
-วันที่ตรวจสถานะ: 21 สิงหาคม 2026
+วันที่ตรวจสถานะ: 22 สิงหาคม 2026
 
 | Phase / Milestone | สถานะ | ขอบเขต |
 | --- | --- | --- |
 | Preparation: Architecture | เสร็จ | Requirement, ADR, architecture, data model, MQTT/API/screen contract และ UI direction |
 | Phase 1A: Frontend Foundation | เสร็จ | Scaffold, tokens, Landing/About/Guide, Authentication UI states, Reset Password และ Profile simulation |
 | Phase 1B: Identity and Isolation | เสร็จ | Identity, Admin approval UI, SMTP outbox, MFA lifecycle, RBAC และ tenant isolation ใช้งานและทดสอบแล้ว |
-| Phase 1C: Farm and Device Registry | กำลังดำเนินการ | Registry และ farm membership management ทำงานแล้ว เหลือ calibration metadata, edit/archive UI และ browser regression รอบสมบูรณ์ |
-| Phase 1D: Telemetry Vertical Slice | ยังไม่เริ่ม | Mosquitto, MQTT ingestion, validation, TimescaleDB, simulator และ Farmer dashboard |
-| Phase 1E: Relay and Admin Vertical Slice | ยังไม่เริ่ม | Relay command/ACK/state, audit และ offline alert โดยต่อยอด Admin workspace จาก Phase 1B |
-| Phase 2: Field Operations | ยังไม่เริ่ม | Alert rules, notification preference, calibration, data quality, activity/irrigation log, export/report และ device health |
+| Phase 1C: Farm and Device Registry | เสร็จ | Registry, Farm membership, Calibration metadata, Edit/Archive UI ครบทุก flow |
+| Phase 1D: Telemetry Vertical Slice | เสร็จ | Mosquitto, MQTT ingestion, validation, TimescaleDB, simulator, Farmer dashboard และ Admin monitor |
+| Phase 1E: Relay and Admin Vertical Slice | ถัดไป | Relay command/ACK/state, audit และ offline alert โดยต่อยอด Admin workspace จาก Phase 1B |
+| Phase 2: Field Operations | ยังไม่เริ่ม | Alert rules, notification preference, data quality, activity/irrigation log, export/report และ device health |
 | Phase 3: Research and Automation | ยังไม่เริ่ม | Dataset governance, analytics, forecast/recommendation และ automation ที่ผ่าน risk assessment |
 
 ## Phase 1: Foundation and Vertical Slice
@@ -54,9 +54,9 @@ Phase 1 จะถือว่าเสร็จเมื่อ vertical slice �
 - Farm-level isolation test อยู่ใน Definition of Done ของ Phase 1C หลังมี `farms`/`farm_memberships`
 - Production ingress, secure cookie/TLS, secret injection และ database restore เป็น University Production Readiness Gate ก่อน deploy จริง
 
-### Phase 1C: Farm and Device Registry
+### Phase 1C: Farm and Device Registry — Complete
 
-ส่งมอบแล้วในรุ่นแรก:
+ส่งมอบแล้ว:
 
 - Farm และ Plot create/read/update/archive พร้อม farm membership scope และ cross-tenant 404
 - Weather Station/Soil Sensor create/read/update/list รองรับ `SOIL_TH`/`SOIL_7_IN_1`
@@ -65,13 +65,9 @@ Phase 1 จะถือว่าเสร็จเมื่อ vertical slice �
 - Device decommission ที่ revoke credential, ปิด assignment และรักษา audit/decommission history
 - Farmer workspace `/farms` และ `/devices` เชื่อม API จริง รองรับ loading, empty, error, success และ destructive confirmation
 - Farm membership list/add-by-email/role/revoke พร้อม OWNER/MANAGER permission matrix และหน้าจอ responsive
-- Alembic revision `20260820_07` ผ่าน PostgreSQL พร้อม backfill บัญชีเดิม และ automated tests รวม 10 รายการ
-
-งานที่เหลือก่อนปิด milestone:
-
-- Calibration record/metadata workflow
-- API/UI สำหรับแก้ไขและ archive resource ให้ครบทุก flow โดยไม่พึ่ง API โดยตรง
-- Browser regression รอบสุดท้ายหลังงานที่เหลือ โดยเฉพาะ add/revoke, validation และ destructive confirmation
+- Calibration metadata & record workflow: ตาราง `calibration_records`, API `POST`/`GET` สำหรับสอบเทียบเซนเซอร์ดิน พร้อม UI บันทึกและดูประวัติ
+- UI Edit & Archive ครบวงจรสำหรับ Farm, Plot, Device (display name, plot, firmware) และ Sensor assignment history view
+- Alembic revision `20260822_08` สำหรับ `calibration_records` และ automated tests ครอบคลุมทั้งหมด 12 รายการ
 
 ### Phase 1D: Telemetry Vertical Slice
 

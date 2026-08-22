@@ -162,3 +162,27 @@ class CredentialResponse(BaseModel):
 
 class DecommissionRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+
+
+class CalibrationCreate(BaseModel):
+    calibrated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    formula_type: str | None = Field(default="LINEAR", max_length=50)
+    offset_value: float | None = Field(default=0.0)
+    scale_factor: float | None = Field(default=1.0)
+    temperature_compensation: bool = False
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class CalibrationResponse(ORMModel):
+    id: UUID
+    tenant_id: UUID
+    farm_id: UUID
+    sensor_id: UUID
+    operator_id: UUID
+    calibrated_at: datetime
+    formula_type: str | None
+    offset_value: float | None
+    scale_factor: float | None
+    temperature_compensation: bool
+    notes: str | None
+

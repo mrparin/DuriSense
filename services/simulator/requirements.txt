@@ -1,0 +1,5 @@
+paho-mqtt==2.1.0
+asyncpg==0.30.0
+SQLAlchemy==2.0.43
+pydantic==2.13.4
+python-dotenv==1.2.3
