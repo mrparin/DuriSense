@@ -78,82 +78,87 @@ async def ensure_demo_devices(db: AsyncSession):
     user_id = user.id if user else None
 
     for farm in farms:
-        # Check if farm has active weather station
-        station = await db.scalar(
-            select(Device).where(
-                Device.farm_id == farm.id,
-                Device.kind == DeviceKind.WEATHER_STATION,
-                Device.status == DeviceStatus.ACTIVE,
-            )
-        )
-        if not station:
-            plot = await db.scalar(select(Plot).where(Plot.farm_id == farm.id))
-            station = Device(
-                tenant_id=farm.tenant_id,
-                farm_id=farm.id,
-                plot_id=plot.id if plot else None,
-                device_code=f"WS-{farm.name[:3].upper()}-01",
-                display_name=f"สถานีตรวจอากาศหลัก {farm.name}",
-                kind=DeviceKind.WEATHER_STATION,
-                status=DeviceStatus.ACTIVE,
-                firmware_version="2.1.0",
-                weather_station=WeatherStation(model="ALL_IN_ONE", serial_number=f"SN-{uuid4().hex[:8].upper()}"),
-            )
-            db.add(station)
-            await db.flush()
-            logger.info(f"Auto-created Weather Station {station.device_code} for farm {farm.name}")
+        farm_plots = (await db.scalars(select(Plot).where(Plot.farm_id == farm.id))).all()
+        if not farm_plots:
+            continue
 
-        # Check if farm has active soil sensor
-        sensor = await db.scalar(
-            select(Device).where(
-                Device.farm_id == farm.id,
-                Device.kind == DeviceKind.SOIL_SENSOR,
-                Device.status == DeviceStatus.ACTIVE,
-            )
-        )
-        if not sensor:
-            plot = await db.scalar(select(Plot).where(Plot.farm_id == farm.id))
-            sensor = Device(
-                tenant_id=farm.tenant_id,
-                farm_id=farm.id,
-                plot_id=plot.id if plot else None,
-                device_code=f"SOIL-{farm.name[:3].upper()}-01",
-                display_name=f"โพรบวัดดิน 7-in-1 ({farm.name})",
-                kind=DeviceKind.SOIL_SENSOR,
-                status=DeviceStatus.ACTIVE,
-                firmware_version="1.4.2",
-                soil_sensor=SoilSensor(sensor_type=SoilSensorType.SOIL_7_IN_1, modbus_address=1),
-            )
-            db.add(sensor)
-            await db.flush()
+        for plot in farm_plots:
+            plot_code_suffix = plot.name.replace(" ", "_")
 
-            if user_id:
-                # Add calibration record
-                db.add(CalibrationRecord(
+            # 1. Ensure Weather Station for this Plot
+            station = await db.scalar(
+                select(Device).where(
+                    Device.farm_id == farm.id,
+                    Device.plot_id == plot.id,
+                    Device.kind == DeviceKind.WEATHER_STATION,
+                    Device.status == DeviceStatus.ACTIVE,
+                )
+            )
+            if not station:
+                station_code = f"WS-{farm.name[:3].upper()}-{plot_code_suffix[:6].upper()}"
+                station = Device(
                     tenant_id=farm.tenant_id,
                     farm_id=farm.id,
-                    sensor_id=sensor.id,
-                    operator_id=user_id,
-                    formula_type="LINEAR",
-                    scale_factor=1.02,
-                    offset_value=-0.10,
-                    notes="Auto-Calibration Baseline",
-                    calibrated_at=now_utc(),
-                ))
-
-            if user_id and plot:
-                # Assign to station & plot
-                db.add(SensorAssignment(
-                    tenant_id=farm.tenant_id,
-                    farm_id=farm.id,
-                    station_id=station.id,
-                    sensor_id=sensor.id,
                     plot_id=plot.id,
-                    installation_depth_cm=30.0,
-                    installed_by=user_id,
-                    valid_from=now_utc(),
-                ))
-            logger.info(f"Auto-created Soil Sensor {sensor.device_code} for farm {farm.name}")
+                    device_code=station_code,
+                    display_name=f"สถานีตรวจอากาศ ({plot.name})",
+                    kind=DeviceKind.WEATHER_STATION,
+                    status=DeviceStatus.ACTIVE,
+                    firmware_version="2.1.0",
+                    weather_station=WeatherStation(model="ALL_IN_ONE", serial_number=f"SN-{uuid4().hex[:8].upper()}"),
+                )
+                db.add(station)
+                await db.flush()
+                logger.info(f"Auto-created Weather Station {station.device_code} for plot {plot.name} in farm {farm.name}")
+
+            # 2. Ensure Soil Sensor for this Plot
+            sensor = await db.scalar(
+                select(Device).where(
+                    Device.farm_id == farm.id,
+                    Device.plot_id == plot.id,
+                    Device.kind == DeviceKind.SOIL_SENSOR,
+                    Device.status == DeviceStatus.ACTIVE,
+                )
+            )
+            if not sensor:
+                sensor_code = f"SOIL-{farm.name[:3].upper()}-{plot_code_suffix[:6].upper()}"
+                sensor = Device(
+                    tenant_id=farm.tenant_id,
+                    farm_id=farm.id,
+                    plot_id=plot.id,
+                    device_code=sensor_code,
+                    display_name=f"โพรบวัดดิน 7-in-1 ({plot.name})",
+                    kind=DeviceKind.SOIL_SENSOR,
+                    status=DeviceStatus.ACTIVE,
+                    firmware_version="1.4.2",
+                    soil_sensor=SoilSensor(sensor_type=SoilSensorType.SOIL_7_IN_1, modbus_address=1),
+                )
+                db.add(sensor)
+                await db.flush()
+
+                if user_id:
+                    db.add(CalibrationRecord(
+                        tenant_id=farm.tenant_id,
+                        farm_id=farm.id,
+                        sensor_id=sensor.id,
+                        operator_id=user_id,
+                        formula_type="LINEAR",
+                        scale_factor=1.02,
+                        offset_value=-0.10,
+                        notes="Auto-Calibration Baseline",
+                        calibrated_at=now_utc(),
+                    ))
+                    db.add(SensorAssignment(
+                        tenant_id=farm.tenant_id,
+                        farm_id=farm.id,
+                        station_id=station.id,
+                        sensor_id=sensor.id,
+                        plot_id=plot.id,
+                        installation_depth_cm=30.0,
+                        installed_by=user_id,
+                        valid_from=now_utc(),
+                    ))
+                logger.info(f"Auto-created Soil Sensor {sensor.device_code} for plot {plot.name} in farm {farm.name}")
 
     await db.commit()
 

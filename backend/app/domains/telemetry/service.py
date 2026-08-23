@@ -199,8 +199,8 @@ async def get_time_series(
                 quality=r.quality,
             ))
     else:
-        # Simple interval grouping (5m, 1h, 1d)
-        bucket_seconds = 300 if interval == "5m" else 3600 if interval == "1h" else 86400
+        # Simple interval grouping (5m, 15m, 1h, 1d)
+        bucket_seconds = 300 if interval == "5m" else 900 if interval == "15m" else 3600 if interval == "1h" else 86400
         buckets: dict[int, list[float]] = {}
         for r in readings:
             val = r.normalized_value if r.normalized_value is not None else r.raw_value

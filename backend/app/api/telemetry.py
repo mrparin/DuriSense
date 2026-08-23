@@ -37,7 +37,7 @@ async def get_farm_time_series(
     device_id: UUID | None = Query(default=None),
     from_time: datetime | None = Query(default=None),
     to_time: datetime | None = Query(default=None),
-    interval: str = Query(default="raw", pattern="^(raw|5m|1h|1d)$"),
+    interval: str = Query(default="raw", pattern="^(raw|5m|15m|1h|1d)$"),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(current_auth),
 ):

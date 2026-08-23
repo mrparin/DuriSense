@@ -108,9 +108,18 @@ export function TelemetryDashboard() {
   // Time Series States
   const [selectedMetric, setSelectedMetric] = useState<string>("soil_moisture");
   const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("24h");
+  const [seriesInterval, setSeriesInterval] = useState<"auto" | "raw" | "5m" | "15m" | "1h" | "1d">("auto");
   const [seriesData, setSeriesData] = useState<TimeSeriesData | null>(null);
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Determine effective downsample interval
+  const effectiveInterval = useMemo(() => {
+    if (seriesInterval !== "auto") return seriesInterval;
+    if (timeRange === "24h") return "15m";
+    if (timeRange === "7d") return "1h";
+    return "1d";
+  }, [seriesInterval, timeRange]);
 
   // Load farms
   useEffect(() => {
@@ -189,7 +198,7 @@ export function TelemetryDashboard() {
         metric_key: selectedMetric,
         from_time: fromTime.toISOString(),
         to_time: now.toISOString(),
-        interval: "raw",
+        interval: effectiveInterval,
       });
 
       const res = await apiFetch<TimeSeriesData>(`/farms/${farmId}/telemetry/series?${qs.toString()}`);
@@ -199,7 +208,7 @@ export function TelemetryDashboard() {
     } finally {
       setSeriesLoading(false);
     }
-  }, [farmId, selectedMetric, timeRange]);
+  }, [farmId, selectedMetric, timeRange, effectiveInterval]);
 
   useEffect(() => {
     let active = true;
@@ -214,7 +223,7 @@ export function TelemetryDashboard() {
       metric_key: selectedMetric,
       from_time: fromTime.toISOString(),
       to_time: now.toISOString(),
-      interval: "raw",
+      interval: effectiveInterval,
     });
 
     apiFetch<TimeSeriesData>(`/farms/${farmId}/telemetry/series?${qs.toString()}`)
@@ -226,7 +235,7 @@ export function TelemetryDashboard() {
       });
 
     return () => { active = false; };
-  }, [farmId, selectedMetric, timeRange, refreshTick]);
+  }, [farmId, selectedMetric, timeRange, effectiveInterval, refreshTick]);
 
   // Filtered stations and sensors by plot
   const filteredStations = useMemo(() => {
@@ -241,8 +250,7 @@ export function TelemetryDashboard() {
     return telemetry.sensors.filter((s) => s.plot_id === selectedPlotId);
   }, [telemetry, selectedPlotId]);
 
-  // Weather station primary data
-  const mainStation = filteredStations[0] || telemetry?.stations[0];
+
 
   return (
     <>
@@ -305,75 +313,104 @@ export function TelemetryDashboard() {
       ) : (
         <div style={{ display: "grid", gap: "var(--space-6)", marginTop: "var(--space-4)" }}>
 
-          {/* Section 1: Weather Station Overview */}
+          {/* Section 1: Weather Station Overview (All Weather Stations in Farm/Plot) */}
           <section className="registry-surface" style={{ padding: "var(--space-5)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)", flexWrap: "wrap", gap: "var(--space-2)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                 <CloudSun style={{ color: "var(--brand-700)", width: 24, height: 24 }} />
                 <div>
                   <h2 style={{ fontSize: 18, margin: 0 }}>
-                    สภาพอากาศ: {mainStation?.display_name || "Weather Station"}
+                    สภาพอากาศทุกแปลง ({filteredStations.length} สถานี)
                   </h2>
                   <span style={{ fontSize: 13, color: "var(--ink-600)" }}>
-                    รหัส {mainStation?.station_code || "-"} · แปลง {mainStation?.plot_name || "ไม่ระบุ"}
+                    รายงานสภาพอากาศสดแยกตามแปลงและโซนเพาะปลูก
                   </span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
-                {mainStation?.battery_pct != null && (
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 13, color: "var(--ink-700)" }}>
-                    <Battery style={{ width: 16 }} /> {mainStation.battery_pct}%
-                  </span>
-                )}
-                <span className={`registry-status ${mainStation?.status === "ONLINE" ? "registry-status--active" : "registry-status--off"}`}>
-                  {mainStation?.status === "ONLINE" ? "🟢 Online" : "⚪ Offline"}
-                </span>
-              </div>
             </div>
 
-            {/* Weather Metrics Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "var(--space-4)" }}>
-              <MetricCard
-                icon={Thermometer}
-                label="อุณหภูมิอากาศ"
-                value={mainStation?.metrics?.air_temperature?.value}
-                unit="°C"
-                color="#e0633b"
-                quality={mainStation?.metrics?.air_temperature?.quality}
-                active={selectedMetric === "air_temperature"}
-                onClick={() => setSelectedMetric("air_temperature")}
-              />
-              <MetricCard
-                icon={Droplets}
-                label="ความชื้นสัมพัทธ์"
-                value={mainStation?.metrics?.air_relative_humidity?.value}
-                unit="%RH"
-                color="#1982c4"
-                quality={mainStation?.metrics?.air_relative_humidity?.quality}
-                active={selectedMetric === "air_relative_humidity"}
-                onClick={() => setSelectedMetric("air_relative_humidity")}
-              />
-              <MetricCard
-                icon={Sun}
-                label="ความเข้มแสง"
-                value={mainStation?.metrics?.illuminance?.value}
-                unit="lux"
-                color="#e89923"
-                quality={mainStation?.metrics?.illuminance?.quality}
-                active={selectedMetric === "illuminance"}
-                onClick={() => setSelectedMetric("illuminance")}
-              />
-              <MetricCard
-                icon={Wind}
-                label="ความเร็วลม"
-                value={mainStation?.metrics?.wind_speed_avg_5m?.value}
-                unit="m/s"
-                color="#6a7b82"
-                quality={mainStation?.metrics?.wind_speed_avg_5m?.quality}
-                active={selectedMetric === "wind_speed_avg_5m"}
-                onClick={() => setSelectedMetric("wind_speed_avg_5m")}
-              />
-            </div>
+            {filteredStations.length === 0 ? (
+              <div className="registry-empty" style={{ padding: "var(--space-5)" }}>
+                <CloudSun style={{ opacity: 0.4 }} />
+                <p>ยังไม่มีสถานีตรวจอากาศในแปลงที่เลือก</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "var(--space-4)" }}>
+                {filteredStations.map((station) => (
+                  <div
+                    key={station.station_id}
+                    style={{
+                      background: "var(--canvas-soft)",
+                      border: "1px solid var(--line-strong)",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "var(--space-4)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
+                      <div>
+                        <strong style={{ fontSize: 16, color: "var(--ink-900)" }}>{station.display_name}</strong>
+                        <span style={{ fontSize: 13, color: "var(--ink-600)", marginLeft: "8px" }}>
+                          ({station.station_code} · แปลง {station.plot_name || "ไม่ระบุ"})
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
+                        {station.battery_pct != null && (
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 13, color: "var(--ink-700)" }}>
+                            <Battery style={{ width: 16 }} /> {station.battery_pct}%
+                          </span>
+                        )}
+                        <span className={`registry-status ${station.status === "ONLINE" ? "registry-status--active" : "registry-status--off"}`}>
+                          {station.status === "ONLINE" ? "🟢 Online" : "⚪ Offline"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "var(--space-3)" }}>
+                      <MetricCard
+                        icon={Thermometer}
+                        label="อุณหภูมิอากาศ"
+                        value={station.metrics?.air_temperature?.value}
+                        unit="°C"
+                        color="#e0633b"
+                        quality={station.metrics?.air_temperature?.quality}
+                        active={selectedMetric === "air_temperature"}
+                        onClick={() => setSelectedMetric("air_temperature")}
+                      />
+                      <MetricCard
+                        icon={Droplets}
+                        label="ความชื้นสัมพัทธ์"
+                        value={station.metrics?.air_relative_humidity?.value}
+                        unit="%RH"
+                        color="#1982c4"
+                        quality={station.metrics?.air_relative_humidity?.quality}
+                        active={selectedMetric === "air_relative_humidity"}
+                        onClick={() => setSelectedMetric("air_relative_humidity")}
+                      />
+                      <MetricCard
+                        icon={Sun}
+                        label="ความเข้มแสง"
+                        value={station.metrics?.illuminance?.value}
+                        unit="lux"
+                        color="#e89923"
+                        quality={station.metrics?.illuminance?.quality}
+                        active={selectedMetric === "illuminance"}
+                        onClick={() => setSelectedMetric("illuminance")}
+                      />
+                      <MetricCard
+                        icon={Wind}
+                        label="ความเร็วลม"
+                        value={station.metrics?.wind_speed_avg_5m?.value}
+                        unit="m/s"
+                        color="#6a7b82"
+                        quality={station.metrics?.wind_speed_avg_5m?.quality}
+                        active={selectedMetric === "wind_speed_avg_5m"}
+                        onClick={() => setSelectedMetric("wind_speed_avg_5m")}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Section 2: Soil Sensors Health & Multi-Depth Grid */}
@@ -504,7 +541,7 @@ export function TelemetryDashboard() {
                 </p>
               </div>
 
-              {/* Controls: Metric, Range */}
+              {/* Controls: Metric, Downsample Interval, Time Range */}
               <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
                 <select
                   value={selectedMetric}
@@ -514,6 +551,20 @@ export function TelemetryDashboard() {
                   {Object.entries(METRIC_LABELS).map(([k, item]) => (
                     <option key={k} value={k}>{item.label} ({item.unit})</option>
                   ))}
+                </select>
+
+                <select
+                  value={seriesInterval}
+                  onChange={(e) => setSeriesInterval(e.target.value as "auto" | "raw" | "5m" | "15m" | "1h" | "1d")}
+                  style={{ fontSize: 13, padding: "6px 10px" }}
+                  title="ความละเอียดของการเฉลี่ยจุดข้อมูล"
+                >
+                  <option value="auto">🤖 ปรับความละเอียดอัตโนมัติ (แนะนำ)</option>
+                  <option value="15m">⏱️ เฉลี่ยทุก 15 นาที (แนะนำ 24 ชม.)</option>
+                  <option value="1h">⏱️ เฉลี่ยทุก 1 ชั่วโมง (แนะนำ 7 วัน)</option>
+                  <option value="1d">📅 เฉลี่ยทุก 1 วัน (แนะนำ 30 วัน)</option>
+                  <option value="5m">⚡ เฉลี่ยทุก 5 นาที</option>
+                  <option value="raw">🔥 ข้อมูลดิบ (ทุก 10 วินาที)</option>
                 </select>
 
                 <div className="button-group" style={{ display: "flex", border: "1px solid var(--line-strong)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
@@ -566,9 +617,15 @@ export function TelemetryDashboard() {
                     const max = Math.max(...validVals);
                     const avg = validVals.reduce((a, b) => a + b, 0) / validVals.length;
                     const unit = METRIC_LABELS[selectedMetric]?.unit || seriesData.unit;
+                    const intervalLabel =
+                      effectiveInterval === "15m" ? "เฉลี่ยทุก 15 นาที" :
+                      effectiveInterval === "1h" ? "เฉลี่ยทุก 1 ชั่วโมง" :
+                      effectiveInterval === "1d" ? "เฉลี่ยทุก 1 วัน" :
+                      effectiveInterval === "5m" ? "เฉลี่ยทุก 5 นาที" : "ข้อมูลดิบ";
+
                     return (
                       <>
-                        <span>จุดข้อมูลทั้งหมด: <strong>{validVals.length}</strong> ค่า</span>
+                        <span>แสดง <strong>{validVals.length}</strong> จุดข้อมูล ({intervalLabel})</span>
                         <span>ต่ำสุด: <strong style={{ color: "#2563eb" }}>{min.toFixed(1)} {unit}</strong></span>
                         <span>เฉลี่ย: <strong>{avg.toFixed(1)} {unit}</strong></span>
                         <span>สูงสุด: <strong style={{ color: "#e0633b" }}>{max.toFixed(1)} {unit}</strong></span>
@@ -670,7 +727,25 @@ function SimpleSvgChart({
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  const validPoints = useMemo(() => points.filter((p) => p.value != null), [points]);
+  const rawValidPoints = useMemo(() => points.filter((p) => p.value != null), [points]);
+
+  // Apply Moving Average smoothing if points are dense (> 40 points)
+  const validPoints = useMemo(() => {
+    if (rawValidPoints.length <= 40) return rawValidPoints;
+    
+    // Apply 3-point rolling moving average for smooth agronomic trend
+    return rawValidPoints.map((p, idx) => {
+      if (idx === 0 || idx === rawValidPoints.length - 1) return p;
+      const prev = rawValidPoints[idx - 1].value as number;
+      const curr = p.value as number;
+      const next = rawValidPoints[idx + 1].value as number;
+      const smoothedVal = (prev + curr * 2 + next) / 4;
+      return {
+        ...p,
+        value: roundTo(smoothedVal, 2),
+      };
+    });
+  }, [rawValidPoints]);
 
   if (validPoints.length < 2) {
     return (
@@ -685,7 +760,7 @@ function SimpleSvgChart({
   const values = validPoints.map((p) => p.value as number);
   const minVal = Math.min(...values);
   const maxVal = Math.max(...values);
-  const paddingVal = (maxVal - minVal) * 0.1 || 1.0;
+  const paddingVal = (maxVal - minVal) * 0.12 || 1.0;
   const chartMin = minVal - paddingVal;
   const chartMax = maxVal + paddingVal;
   const valRange = chartMax - chartMin || 1;
@@ -762,8 +837,8 @@ function SimpleSvgChart({
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-            <stop offset="65%" stopColor={color} stopOpacity="0.10" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.32" />
+            <stop offset="70%" stopColor={color} stopOpacity="0.08" />
             <stop offset="100%" stopColor={color} stopOpacity="0.00" />
           </linearGradient>
           <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
@@ -788,17 +863,20 @@ function SimpleSvgChart({
           {minVal.toFixed(1)}
         </text>
 
-        {/* X-Axis Time Labels (First, Middle, Last) */}
+        {/* X-Axis Time Labels (First, Quarter, Middle, 3/4, Last) */}
         {validPoints.length > 0 && (
           <>
             <text x={coords[0].x} y={height - 12} textAnchor="start" fontSize="11" fill="#6b7280">
-              {new Date(validPoints[0].timestamp).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+              {formatTime(validPoints[0].timestamp)}
             </text>
-            <text x={coords[Math.floor(coords.length / 2)].x} y={height - 12} textAnchor="middle" fontSize="11" fill="#6b7280">
-              {new Date(validPoints[Math.floor(validPoints.length / 2)].timestamp).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+            <text x={coords[Math.floor(coords.length * 0.33)].x} y={height - 12} textAnchor="middle" fontSize="11" fill="#6b7280">
+              {formatTime(validPoints[Math.floor(validPoints.length * 0.33)].timestamp)}
+            </text>
+            <text x={coords[Math.floor(coords.length * 0.66)].x} y={height - 12} textAnchor="middle" fontSize="11" fill="#6b7280">
+              {formatTime(validPoints[Math.floor(validPoints.length * 0.66)].timestamp)}
             </text>
             <text x={coords[coords.length - 1].x} y={height - 12} textAnchor="end" fontSize="11" fill="#6b7280">
-              {new Date(validPoints[validPoints.length - 1].timestamp).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+              {formatTime(validPoints[validPoints.length - 1].timestamp)}
             </text>
           </>
         )}
@@ -817,9 +895,10 @@ function SimpleSvgChart({
           filter="url(#glow)"
         />
 
-        {/* Sample Point Dots */}
+        {/* Sample Point Dots (spaced out if dense) */}
         {coords.map((c, idx) => {
-          const isSample = idx === 0 || idx === coords.length - 1 || idx % Math.max(1, Math.floor(coords.length / 10)) === 0;
+          const sampleInterval = Math.max(1, Math.floor(coords.length / 12));
+          const isSample = idx === 0 || idx === coords.length - 1 || idx % sampleInterval === 0;
           if (!isSample && hoverIndex !== idx) return null;
           const isHovered = hoverIndex === idx;
           return (
@@ -888,7 +967,6 @@ function SimpleSvgChart({
             🕒 {new Date(activeCoord.point.timestamp).toLocaleString("th-TH", {
               day: "numeric",
               month: "short",
-              year: "numeric",
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit",
@@ -909,4 +987,18 @@ function SimpleSvgChart({
       )}
     </div>
   );
+}
+
+function roundTo(val: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round(val * factor) / factor;
+}
+
+function formatTime(isoStr: string): string {
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return isoStr;
+  }
 }
