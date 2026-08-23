@@ -1,6 +1,6 @@
 "use client";
 
-import { Cpu, LandPlot, LineChart, LogOut, UserRound } from "lucide-react";
+import { ClipboardList, Cpu, LandPlot, LineChart, LogOut, UserRound, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,6 +8,8 @@ import { apiFetch } from "@/lib/api";
 
 const links = [
   { href: "/telemetry", label: "ข้อมูลตรวจวัด", icon: LineChart },
+  { href: "/relays", label: "ควบคุมรีเลย์", icon: Zap },
+  { href: "/activities", label: "บันทึกกิจกรรม", icon: ClipboardList },
   { href: "/farms", label: "สวนและแปลง", icon: LandPlot },
   { href: "/devices", label: "อุปกรณ์", icon: Cpu },
   { href: "/profile", label: "โปรไฟล์", icon: UserRound },

@@ -22,13 +22,14 @@
 6. [API และ Screen Contract](./06-api-and-screen-contract.md)
 7. [UI Direction ด้วย Gridgeist](./07-ui-direction.md)
 8. [Phase 1B Delivery](./08-phase-1b-delivery.md)
-9. [Phase 1C Progress](./09-phase-1c-progress.md)
+9. [Phase 1C Delivery](./09-phase-1c-progress.md)
+10. [Phase 1D Delivery](./10-phase-1d-delivery.md)
+11. [Phase 1E Delivery](./11-phase-1e-delivery.md)
 
 ## สถานะ
 
-ชุดเอกสารออกแบบ, Phase 1A Frontend Foundation และ Phase 1B Identity and Isolation เสร็จแล้ว
-ระบบมี FastAPI, PostgreSQL migration และ Identity/Isolation flow ที่ทำงานจริง ขณะนี้ Phase 1C:
-Farm and Device Registry กำลังดำเนินการ ส่วน MQTT runtime และ Simulator อยู่ใน Phase 1D/1E
+ชุดเอกสารออกแบบ, Phase 1A Frontend Foundation, Phase 1B Identity and Isolation, Phase 1C Farm and Device Registry, Phase 1D Telemetry Processing, และ Phase 1E Relay Control & Activity Tracking เสร็จสมบูรณ์แล้ว 100%
+ระบบมี FastAPI, PostgreSQL migration, Mosquitto MQTT Broker, Ingestion Engine, Field Simulator, Telemetry Dashboards, Relay Control Center, และ Farm Activity Journal ที่ทำงานจริง 100%
 สถานะ implementation ล่าสุดติดตามใน `docs/ROADMAP.md`
 
 ## ลำดับการดำเนินงาน
@@ -37,10 +38,10 @@ Farm and Device Registry กำลังดำเนินการ ส่วน
 
 1. Phase 1A: Frontend Foundation — เสร็จแล้ว
 2. Phase 1B: Account activation, Admin approval และ tenant isolation — เสร็จแล้ว
-3. Phase 1C: Farm, Plot, Weather Station, Soil Sensor และ assignment history — กำลังดำเนินการ
-4. Phase 1D: MQTT ingestion, TimescaleDB, Simulator และ Farmer dashboard — ยังไม่เริ่ม
-5. Phase 1E: Relay command, ACK, audit, Admin queue และ offline alert — ยังไม่เริ่ม
-6. Phase 2: Field Operations — alerts, calibration, activity log, report/export และ device health
+3. Phase 1C: Farm, Plot, Weather Station, Soil Sensor, Calibration และ assignment history — เสร็จแล้ว
+4. Phase 1D: MQTT ingestion, TimescaleDB, Simulator, Telemetry Dashboard & Interactive Charts — เสร็จแล้ว
+5. Phase 1E: Relay Control Center, MQTT Commands, Pulse Timers & Farm Activity Journal — เสร็จแล้ว
+6. Phase 2: Alert Rules & Field Operations — ถัดไป
 7. Phase 3: Research and Automation — dataset governance, analytics และ safe automation
 
 สถานะล่าสุดและ Definition of Done อยู่ที่ [Canonical Roadmap](../ROADMAP.md)

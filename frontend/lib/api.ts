@@ -38,6 +38,10 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     credentials: "same-origin",
     cache: "no-store",
   });
+  if (response.status === 204) {
+    if (!response.ok) throw new ApiError(response.status, { code: "HTTP_ERROR", message: "Request failed" });
+    return undefined as unknown as T;
+  }
   const body = await response.json();
   if (!response.ok) throw new ApiError(response.status, body as ApiErrorBody);
   return body as T;

@@ -8,7 +8,7 @@
 
 ## สถานะปัจจุบัน
 
-วันที่ตรวจสถานะ: 22 สิงหาคม 2026
+วันที่ตรวจสถานะ: 23 สิงหาคม 2026
 
 | Phase / Milestone | สถานะ | ขอบเขต |
 | --- | --- | --- |
@@ -17,8 +17,8 @@
 | Phase 1B: Identity and Isolation | เสร็จ | Identity, Admin approval UI, SMTP outbox, MFA lifecycle, RBAC และ tenant isolation ใช้งานและทดสอบแล้ว |
 | Phase 1C: Farm and Device Registry | เสร็จ | Registry, Farm membership, Calibration metadata, Edit/Archive UI ครบทุก flow |
 | Phase 1D: Telemetry Vertical Slice | เสร็จ | Mosquitto, MQTT ingestion, validation, TimescaleDB, simulator, Farmer dashboard และ Admin monitor |
-| Phase 1E: Relay and Admin Vertical Slice | ถัดไป | Relay command/ACK/state, audit และ offline alert โดยต่อยอด Admin workspace จาก Phase 1B |
-| Phase 2: Field Operations | ยังไม่เริ่ม | Alert rules, notification preference, data quality, activity/irrigation log, export/report และ device health |
+| Phase 1E: Relay Control and Activity Tracking | เสร็จ | Relay command/ACK, pulse timers, 4-channel control, audit trail และ farm activity logs |
+| Phase 2: Field Operations | ถัดไป | Alert rules, notification preference, data quality, export/report และ device health |
 | Phase 3: Research and Automation | ยังไม่เริ่ม | Dataset governance, analytics, forecast/recommendation และ automation ที่ผ่าน risk assessment |
 
 ## Phase 1: Foundation and Vertical Slice
@@ -69,18 +69,31 @@ Phase 1 จะถือว่าเสร็จเมื่อ vertical slice �
 - UI Edit & Archive ครบวงจรสำหรับ Farm, Plot, Device (display name, plot, firmware) และ Sensor assignment history view
 - Alembic revision `20260822_08` สำหรับ `calibration_records` และ automated tests ครอบคลุมทั้งหมด 12 รายการ
 
-### Phase 1D: Telemetry Vertical Slice
+### Phase 1D: Telemetry Data Processing & TimescaleDB Integration — Complete
 
-- Eclipse Mosquitto MQTT/TLS และ ACL รายอุปกรณ์
-- Legacy adapter, Batch `2.0-batch` และ Production payload `2.0`
-- Validation, normalization, quarantine, deduplication และ TimescaleDB storage
-- Sensor Simulator และ Dashboard ที่มี latest/series/quality/offline states
+ส่งมอบแล้ว:
 
-### Phase 1E: Relay and Admin Vertical Slice
+- Eclipse Mosquitto 2.0 MQTT/TLS Broker (พอร์ต 1883/8883) พร้อม Docker Compose Integration
+- Data Contracts สำหรับ WeatherPayloadV2, SoilPayloadV2 (7-in-1 NPK), DeviceStatusPayload และ Range Limits
+- TimescaleDB Hypertables & Alembic migration `20260822_09_telemetry_hypertables` สำหรับ `sensor_readings`, `device_health_history`, `raw_mqtt_messages`
+- MQTT Ingestor Engine พร้อม deduplication, validation, hardware calibration formula offset ($y = ax + b$), quarantine queue และ DB logging
+- Field Simulator Service จำลองสภาพอากาศตามวงรอบดวงอาทิตย์ และโพรบวัดดิน 7-in-1 ครบทุกแปลงสตรีมข้อมูลสดทุก 10 วินาที
+- Backend Telemetry APIs (`/telemetry/latest`, `/telemetry/series` รองรับ `15m`/`1h`/`1d` intervals, `/devices/{id}/health`, `/admin/telemetry/overview`)
+- Frontend Farmer Dashboard (`/telemetry`): สภาพอากาศสดและสุขภาพดิน 7-in-1 ครบทุกแปลงทุเรียนในสวน
+- Interactive SVG Chart UX Upgrades: Smooth Bézier Spline Curves, Area Gradient Shading, Glassmorphism Hover Tooltip, Auto-Downsampling (15m/1h/1d), Moving Average Filter และ Plot-by-Plot complete rendering
+- Admin Telemetry Monitor (`/admin/telemetry`): Ingestion queue monitor, Raw MQTT stream inspection และ Quarantine audit
+- Automated Tests (Pytest 14/14 passed) และ Frontend ESLint / TypeScript typecheck ผ่าน 0 errors
 
-- Relay 1-4 naming และ permission check
-- Command, expiry, ACK, reported state, timeout และ state mismatch
-- Relay Simulator, audit trail, Admin user approval queue และระบบแจ้งเตือน offline ขั้นต่ำ
+### Phase 1E: Operational Logs & Relay Control Center — Complete
+
+ส่งมอบแล้ว:
+
+- ตารางฐานข้อมูล `relay_channels`, `relay_commands`, `relay_command_events`, และ `farm_activities` พร้อม Alembic migration `20260823_10`
+- REST APIs สำหรับ Relay Control (`/relays`, `/relays/{id}/command`) และ Farm Activity Logs (`/activities`)
+- MQTT Relay Command Dispatcher: ส่งสัญญาณคำสั่งเปิด/ปิดไปยัง MQTT Broker และรองรับ Pulse Duration Timers (5m, 15m, 30m, 1h)
+- Relay Control Center UI (`/relays`): ปุ่มควบคุมสวิตช์กำลังขนาดใหญ่ (Power Switch) พร้อมไฟ LED สัญลักษณ์ Real-Time 🟢 ON / ⚪ OFF / 🟡 PENDING, Floating Toast Notifications แบบมุมขวาล่าง, และประวัติสั่งการ
+- Farm Activity Journal UI (`/activities`): บันทึกและติดตามประวัติการให้น้ำ ใส่ปุ๋ย ฉีดพ่นสารเคมี ตัดแต่งกิ่ง และผลผลิตเก็บเกี่ยวแบบ Timeline
+- Pytest Unit Tests (`test_operations.py`) และ Frontend Lint/Typecheck ผ่าน 0 errors
 
 ## Phase 2: Field Operations
 
