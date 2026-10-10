@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import admin, auth, operations, registry, telemetry, tenants
+from app.api import admin, alerts, auth, operations, registry, telemetry, tenants
 from app.api.errors import APIError, api_error_handler
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -90,3 +90,4 @@ app.include_router(tenants.router, prefix="/api/v1")
 app.include_router(registry.router, prefix="/api/v1")
 app.include_router(telemetry.router, prefix="/api/v1")
 app.include_router(operations.router, prefix="/api/v1")
+app.include_router(alerts.router, prefix="/api/v1")

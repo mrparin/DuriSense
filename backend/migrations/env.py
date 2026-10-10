@@ -9,6 +9,8 @@ from app.db.base import Base
 from app.domains.identity import models as identity_models  # noqa: F401
 from app.domains.registry import models as registry_models  # noqa: F401
 from app.domains.telemetry import models as telemetry_models  # noqa: F401
+from app.domains.operations import models as operations_models  # noqa: F401
+from app.domains.alerts import models as alert_models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

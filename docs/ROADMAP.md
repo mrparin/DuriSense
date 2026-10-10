@@ -18,7 +18,9 @@
 | Phase 1C: Farm and Device Registry | เสร็จ | Registry, Farm membership, Calibration metadata, Edit/Archive UI ครบทุก flow |
 | Phase 1D: Telemetry Vertical Slice | เสร็จ | Mosquitto, MQTT ingestion, validation, TimescaleDB, simulator, Farmer dashboard และ Admin monitor |
 | Phase 1E: Relay Control and Activity Tracking | เสร็จ | Relay command/ACK, pulse timers, 4-channel control, audit trail และ farm activity logs |
-| Phase 2: Field Operations | ถัดไป | Alert rules, notification preference, data quality, export/report และ device health |
+| Phase 2A: Alert Rules & Notifications | เสร็จ | กฎเตือนภัย, hysteresis/debounce, วงจรชีวิตเหตุการณ์ (Open/Ack/Resolve), In-app bell, quiet hours และ preferences |
+| Phase 2B: Device Health & Data Gap | ถัดไป | ตรวจจับสถานีออฟไลน์, รายงานข้อมูลขาดช่วง (Data gap report), data quality |
+| Phase 2C: Export & Summary Reports | รอดำเนินการ | ส่งออกข้อมูล CSV/XLSX, รายงานสรุปภาพรวมรายวัน/สัปดาห์/เดือน |
 | Phase 3: Research and Automation | ยังไม่เริ่ม | Dataset governance, analytics, forecast/recommendation และ automation ที่ผ่าน risk assessment |
 
 ## Phase 1: Foundation and Vertical Slice
@@ -97,13 +99,23 @@ Phase 1 จะถือว่าเสร็จเมื่อ vertical slice �
 
 ## Phase 2: Field Operations
 
-เริ่มหลัง Phase 1 vertical slice ผ่าน integration/security tests แล้วเท่านั้น:
+### Phase 2A: Alert Rules & Notification System — Complete
 
-- Alert rules และ notification preference
-- Calibration workflow และ data quality operations
-- Farm activity/irrigation log
-- CSV/XLSX export และรายงาน
-- Device health และ data-gap report
+ส่งมอบแล้ว (10 ตุลาคม 2026):
+- ตารางฐานข้อมูล `alert_rules`, `alert_events`, และ `notification_preferences` พร้อม Alembic migration `20260824_11`
+- REST APIs สำหรับ Alert Rules CRUD, Event Lifecycle (`/alerts/events/{id}/acknowledge`, `/resolve`), Summary KPIs, และ User Notification Preferences
+- Rule Evaluation Engine พร้อมเงื่อนไข `LESS_THAN`, `GREATER_THAN`, `OUT_OF_RANGE`, `OFFLINE_TIMEOUT` และกลไก Hysteresis / Deadband ป้องกันแจ้งเตือนซ้ำ
+- Frontend Alerts Operations Center (`/alerts`): สรุป KPI, ไทม์ไลน์เหตุการณ์, จัดการและสร้างกฎใหม่ด้วย Modal, และการตั้งค่าช่องทางแจ้งเตือน/ช่วงเวลาเงียบ (Quiet Hours)
+- Header Notification Bell 🔔: แสดงตัวเลข Badge เหตุการณ์ Open และ Dropdown Drawer เปิดดูแจ้งเตือนด่วนได้จากทุกหน้า
+- Automated Tests (`test_alerts.py`) และ Frontend Lint/Typecheck ผ่าน 0 errors
+
+### Phase 2B: Device Health & Data Gap — ถัดไป
+- Heartbeat & Offline detection สำหรับสถานีตรวจวัด
+- Data-gap report และตรวจจับช่วงเวลาที่ข้อมูลเซนเซอร์ขาดหาย
+
+### Phase 2C: Export & Summary Reports — รอดำเนินการ
+- CSV / XLSX export ตามช่วงเวลาและแปลง
+- รายงานสรุปภาพรวมรายวัน/สัปดาห์/เดือนของแต่ละสวน
 
 ## Phase 3: Research and Automation
 
