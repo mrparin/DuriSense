@@ -92,7 +92,11 @@ async def ensure_default_relay_channels(db: AsyncSession, farm_id: UUID) -> list
     if added:
         await db.commit()
 
-    return (await db.scalars(select(RelayChannel).where(RelayChannel.farm_id == farm_id).order_by(RelayChannel.channel_number.asc()))).all()
+    return (await db.scalars(
+        select(RelayChannel)
+        .where(RelayChannel.farm_id == farm_id)
+        .order_by(RelayChannel.station_id.asc(), RelayChannel.channel_number.asc())
+    )).all()
 
 
 async def get_farm_relay_channels(db: AsyncSession, farm_id: UUID, user: User) -> list[RelayChannelResponse] | None:
