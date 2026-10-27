@@ -75,6 +75,118 @@ class DeviceHealthResponse(BaseModel):
     last_seen: datetime | None = None
 
 
+class DeviceHealthHistoryItem(BaseModel):
+    recorded_at: datetime
+    battery_pct: float | None = None
+    battery_voltage: float | None = None
+    rssi_dbm: int | None = None
+    status: str = "ONLINE"
+    uptime_seconds: int | None = None
+
+
+class DeviceHealthDetailResponse(BaseModel):
+    device_id: UUID
+    device_code: str
+    display_name: str
+    kind: str
+    plot_id: UUID | None = None
+    plot_name: str | None = None
+    status: str = "ONLINE"  # ONLINE, DEGRADED, OFFLINE, UNKNOWN
+    battery_pct: float | None = None
+    battery_voltage: float | None = None
+    battery_status: str = "GOOD"  # GOOD, FAIR, LOW, CRITICAL, UNKNOWN
+    rssi_dbm: int | None = None
+    signal_quality: str = "GOOD"  # EXCELLENT, GOOD, FAIR, POOR, UNKNOWN
+    uptime_seconds: int | None = None
+    uptime_formatted: str | None = None
+    firmware_version: str | None = None
+    last_seen: datetime | None = None
+    offline_duration_seconds: float | None = None
+    recent_history: list[DeviceHealthHistoryItem] = Field(default_factory=list)
+
+
+class StationHealthSummary(BaseModel):
+    station_id: UUID
+    station_code: str
+    display_name: str
+    plot_id: UUID | None = None
+    plot_name: str | None = None
+    status: str = "ONLINE"
+    battery_pct: float | None = None
+    battery_status: str = "GOOD"
+    rssi_dbm: int | None = None
+    signal_quality: str = "GOOD"
+    last_seen: datetime | None = None
+    assigned_sensor_count: int = 0
+
+
+class SensorHealthSummary(BaseModel):
+    sensor_id: UUID
+    sensor_code: str
+    display_name: str
+    sensor_type: str = "SOIL_7_IN_1"
+    plot_id: UUID | None = None
+    plot_name: str | None = None
+    status: str = "ONLINE"
+    last_seen: datetime | None = None
+
+
+class FarmHealthSummaryResponse(BaseModel):
+    farm_id: UUID
+    total_stations: int = 0
+    total_sensors: int = 0
+    online_stations: int = 0
+    degraded_stations: int = 0
+    offline_stations: int = 0
+    low_battery_count: int = 0
+    weak_signal_count: int = 0
+    stations: list[StationHealthSummary] = Field(default_factory=list)
+    sensors: list[SensorHealthSummary] = Field(default_factory=list)
+
+
+class DataGapItem(BaseModel):
+    id: str
+    station_id: UUID
+    station_code: str
+    station_name: str
+    plot_name: str | None = None
+    gap_start: datetime
+    gap_end: datetime
+    duration_seconds: float
+    duration_formatted: str
+    severity: str = "MINOR"  # MINOR, MODERATE, CRITICAL
+    probable_cause: str = "ขาดการส่งข้อมูล (No Telemetry)"
+
+
+class StationGapSummary(BaseModel):
+    station_id: UUID
+    station_code: str
+    station_name: str
+    total_gaps: int = 0
+    total_gap_seconds: float = 0.0
+    completeness_pct: float = 100.0
+
+
+class DataGapReportResponse(BaseModel):
+    farm_id: UUID
+    start_date: datetime
+    end_date: datetime
+    threshold_minutes: int
+    total_gaps_count: int = 0
+    total_gap_duration_seconds: float = 0.0
+    overall_completeness_pct: float = 100.0
+    gaps: list[DataGapItem] = Field(default_factory=list)
+    stations_summary: list[StationGapSummary] = Field(default_factory=list)
+
+
+class OfflineCheckResult(BaseModel):
+    checked_at: datetime
+    total_devices_checked: int = 0
+    offline_devices_count: int = 0
+    offline_device_codes: list[str] = Field(default_factory=list)
+    alerts_triggered: int = 0
+
+
 class QuarantineLogItem(BaseModel):
     id: UUID
     topic: str

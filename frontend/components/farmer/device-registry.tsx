@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   AlertCircle,
   BookOpen,
   CheckCircle2,
@@ -66,7 +67,7 @@ type Calibration = {
 type Credential = { device_id: string; secret: string; message: string };
 type ViewState = "loading" | "ready" | "unauthorized" | "error";
 
-export function DeviceRegistry() {
+export function DeviceRegistry({ onSwitchToHealth }: { onSwitchToHealth?: () => void } = {}) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmId, setFarmId] = useState("");
   const [plots, setPlots] = useState<Plot[]>([]);
@@ -288,6 +289,11 @@ export function DeviceRegistry() {
       <div className="workspace-heading">
         <div><p className="eyebrow">Device registry</p><h1>ทะเบียนอุปกรณ์</h1><p>ลงทะเบียน Weather Station และ Soil Sensor ด้วยรหัสที่ตรวจสอบย้อนกลับได้ พร้อมประวัติการติดตั้ง สอบเทียบ และยกเลิกใช้งาน</p></div>
         <div className="workspace-heading__actions">
+          {onSwitchToHealth && (
+            <button className="button button--secondary" type="button" onClick={onSwitchToHealth}>
+              <Activity />สุขภาพ & Data Gap
+            </button>
+          )}
           <button className="button button--secondary" onClick={() => { setShowForm("sensor"); setEditingDevice(null); }}><Plus />เพิ่มเซนเซอร์</button>
           <button className="button button--primary" onClick={() => { setShowForm("station"); setEditingDevice(null); }}><Plus />เพิ่มสถานี</button>
         </div>

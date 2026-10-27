@@ -19,8 +19,8 @@
 | Phase 1D: Telemetry Vertical Slice | เสร็จ | Mosquitto, MQTT ingestion, validation, TimescaleDB, simulator, Farmer dashboard และ Admin monitor |
 | Phase 1E: Relay Control and Activity Tracking | เสร็จ | Relay command/ACK, pulse timers, 4-channel control, audit trail และ farm activity logs |
 | Phase 2A: Alert Rules & Notifications | เสร็จ | กฎเตือนภัย, hysteresis/debounce, วงจรชีวิตเหตุการณ์ (Open/Ack/Resolve), In-app bell, quiet hours และ preferences |
-| Phase 2B: Device Health & Data Gap | ถัดไป | ตรวจจับสถานีออฟไลน์, รายงานข้อมูลขาดช่วง (Data gap report), data quality |
-| Phase 2C: Export & Summary Reports | รอดำเนินการ | ส่งออกข้อมูล CSV/XLSX, รายงานสรุปภาพรวมรายวัน/สัปดาห์/เดือน |
+| Phase 2B: Device Health & Data Gap | เสร็จ | ตรวจจับสถานีออฟไลน์, รายงานข้อมูลขาดช่วง (Data gap report), data quality, battery/RSSI health |
+| Phase 2C: Export & Summary Reports | ถัดไป | ส่งออกข้อมูล CSV/XLSX, รายงานสรุปภาพรวมรายวัน/สัปดาห์/เดือน |
 | Phase 3: Research and Automation | ยังไม่เริ่ม | Dataset governance, analytics, forecast/recommendation และ automation ที่ผ่าน risk assessment |
 
 ## Phase 1: Foundation and Vertical Slice
@@ -109,11 +109,23 @@ Phase 1 จะถือว่าเสร็จเมื่อ vertical slice �
 - Header Notification Bell 🔔: แสดงตัวเลข Badge เหตุการณ์ Open และ Dropdown Drawer เปิดดูแจ้งเตือนด่วนได้จากทุกหน้า
 - Automated Tests (`test_alerts.py`) และ Frontend Lint/Typecheck ผ่าน 0 errors
 
-### Phase 2B: Device Health & Data Gap — ถัดไป
-- Heartbeat & Offline detection สำหรับสถานีตรวจวัด
-- Data-gap report และตรวจจับช่วงเวลาที่ข้อมูลเซนเซอร์ขาดหาย
+### Phase 2B: Device Health & Data Gap — Complete
 
-### Phase 2C: Export & Summary Reports — รอดำเนินการ
+ส่งมอบแล้ว (28 ตุลาคม 2026):
+- Schema & Data Models สำหรับ Device Health Detail, Farm Health Summary, Data Gap Report, และ Offline Check Result
+- Backend Service & REST APIs:
+  - `GET /api/v1/farms/{id}/health/summary`: สรุปภาพรวมสถานะอุปกรณ์ทั้งสวน (Online, Degraded, Offline, Low Battery, Weak RSSI)
+  - `GET /api/v1/devices/{id}/health/detail`: ข้อมูลสุขภาพอุปกรณ์เชิงลึก พร้อมประวัติแบตเตอรี่ & RSSI ย้อนหลัง 50 รายการ
+  - `GET /api/v1/farms/{id}/health/data-gaps`: ตรวจจับและแจกแจง Data Gaps พร้อมคำนวณอัตราความสมบูรณ์ของข้อมูล (Completeness Rate %)
+  - `POST /api/v1/farms/{id}/health/check-offline`: ตรวจจับอุปกรณ์ที่ออฟไลน์ พร้อม Trigger/Resolve `OFFLINE_TIMEOUT` alerts โดยอัตโนมัติ
+- Frontend UI:
+  - `DeviceHealthCenter`: แดชบอร์ดติดตามสุขภาพสถานีตรวจวัดและเซนเซอร์ดิน พร้อมเกจวัดแบตเตอรี่และคุณภาพสัญญาณ RSSI
+  - Data Gap Analytics View: ตัวกรองช่วงเวลา (24 ชม., 7 วัน, 30 วัน), การคำนวณ Data Completeness %, แถบ Visual Gap Timeline, ตารางแจกแจง Gap พร้อมฟังก์ชันส่งออก CSV
+  - Deep-Dive Modal: ดูประวัติสถานะและเส้นทางสุขภาพของอุปกรณ์ย้อนหลัง
+  - เชื่อมโยงเข้ากับ `/devices` ผ่าน `DevicesWorkspace`
+- Automated Tests (`test_telemetry.py`) ครอบคลุม 7 รายการ และ Frontend Lint/Typecheck ผ่าน 0 errors
+
+### Phase 2C: Export & Summary Reports — ถัดไป
 - CSV / XLSX export ตามช่วงเวลาและแปลง
 - รายงานสรุปภาพรวมรายวัน/สัปดาห์/เดือนของแต่ละสวน
 
